@@ -35,8 +35,10 @@ class FavViewController: UIViewController, UITableViewDelegate, UITableViewDataS
         favTableView.reloadData()
         
         favLocations.removeAll()
-        for i in 0...(favPlaces.count - 1) {
-            favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+        if favPlaces.isEmpty == false {
+            for i in 0...(favPlaces.count - 1) {
+                favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+            }
         }
     }
     

@@ -103,6 +103,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
+        mapView.removeAnnotations(participantAnnotations)
+        participantIDs.removeAll()
         participantLocations.removeAll()
         participantAnnotations.removeAll()
         
@@ -165,6 +167,19 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                     })
                 }
             }
+        }
+        // estimatedTimesSort配列が空のとき（待ち合わせを完了したあとに地図を開いたとき）
+        else {
+            // タイマーを止める
+            if let workingTimer = meetingTimer {
+                workingTimer.invalidate()
+            }
+            
+            mapView.removeAnnotation(meetingAnnotation)
+            meetingPlace = nil
+            meetingLocation = nil
+            
+            initMap()
         }
     }
     

@@ -33,6 +33,8 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
     var lat: String?
     var lon: String?
     
+    @IBOutlet weak var continueButton: UIBarButtonItem!
+    
     
     
     @IBAction func cancel(_ sender: Any) {
@@ -46,6 +48,9 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
         
         friendsTableView.delegate = self
         friendsTableView.dataSource = self
+        
+        continueButton.isEnabled = false
+        continueButton.image = UIImage(named: "ContinueButton_gray")
         
         print(receivedEveryoneIDs)
     }
@@ -221,6 +226,15 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
             }
         }
         
+        // 少なくとも一人選択していれば続行ボタンを有効にする
+        if checkmark.contains(true) {
+            continueButton.isEnabled = true
+            continueButton.image = UIImage(named: "ContinueButton")
+        } else {
+            continueButton.isEnabled = false
+            continueButton.image = UIImage(named: "ContinueButton_gray")
+        }
+        
         return cell
     }
     
@@ -243,6 +257,8 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
         
         return indexPath
     }
+    
+    
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         

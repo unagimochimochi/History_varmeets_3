@@ -145,8 +145,10 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
                 
                 // データベースに保存
                 favLocations.removeAll()
-                for i in 0...(favPlaces.count - 1) {
-                    favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+                if favPlaces.isEmpty == false {
+                    for i in 0...(favPlaces.count - 1) {
+                        favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+                    }
                 }
                 reloadFavorites()
             }

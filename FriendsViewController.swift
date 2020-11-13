@@ -28,10 +28,6 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
         
     override func viewDidLoad() {
         super.viewDidLoad()
-    }
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
         
         friendIDs.removeAll()
         friendNames.removeAll()
@@ -63,6 +59,8 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
         })
     }
     
+
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         
@@ -70,6 +68,46 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
             workingTimer.invalidate()
         }
     }
+    
+    
+    
+    @IBAction func refresh(_ sender: Any) {
+        
+        if let workingTimer = timer {
+            workingTimer.invalidate()
+        }
+        
+        friendIDs.removeAll()
+        friendNames.removeAll()
+        friendBios.removeAll()
+        check.removeAll()
+        
+        friendsTableView.reloadData()
+        
+        // タイマースタート
+        timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingFriends), userInfo: nil, repeats: true)
+        
+        fetchFriends(completion: {
+            // 友だち一覧を取得し終えたら名前とbioに初期値（ID）を代入
+            if self.friendIDs.isEmpty == false {
+                
+                for i in 0...(self.friendIDs.count - 1) {
+                    self.friendNames.append(self.friendIDs[i])
+                    self.friendBios.append(self.friendIDs[i])
+                    self.check.append(false)
+                }
+                
+                // 名前とbioを取得
+                for i in 0...(self.friendIDs.count - 1) {
+                    self.fetchFriendInfo(index: i, completion: {
+                        self.check[i] = true
+                    })
+                }
+            }
+        })
+    }
+    
+    
     
     @objc func fetchingFriends() {
         print("Now fetching my friends")
@@ -86,6 +124,8 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
             friendsTableView.reloadData()
         }
     }
+    
+    
     
     func fetchFriends(completion: @escaping () -> ()) {
         
@@ -109,6 +149,8 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
             }
         })
     }
+    
+    
     
     func fetchFriendInfo(index: Int, completion: @escaping () -> ()) {
         
@@ -135,9 +177,13 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
         })
     }
     
+    
+    
     func tableView(_ table: UITableView, numberOfRowsInSection section: Int) -> Int {
         return friendIDs.count
     }
+    
+    
     
     func tableView(_ table: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
@@ -158,14 +204,20 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
         return cell
     }
     
+    
+    
     // Cell の高さを60にする
     func tableView(_ table: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 60.0
     }
     
+    
+    
     func tableView(_ table: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)
     }
+    
+    
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         
@@ -186,4 +238,6 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
         }
     }
 
+    
+    
 }

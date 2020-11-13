@@ -941,26 +941,29 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 }
                 
                 // CLLocationから住所を特定
-                for i in 0...(favLocations.count - 1) {
+                if favLocations.isEmpty == false {
                     
-                    let geocoder = CLGeocoder()
-                    
-                    geocoder.reverseGeocodeLocation(favLocations[i], preferredLocale: nil, completionHandler: {(placemarks, error) in
+                    for i in 0...(favLocations.count - 1) {
                         
-                        if let error = error {
-                            print("お気に入りの住所取得エラー: \(error)")
-                            return
-                        }
+                        let geocoder = CLGeocoder()
                         
-                        if let placemark = placemarks?.first,
-                           let administrativeArea = placemark.administrativeArea,    //県
-                           let locality = placemark.locality,    // 市区町村
-                           let throughfare = placemark.thoroughfare,    // 丁目を含む地名
-                           let subThoroughfare = placemark.subThoroughfare {    // 番地
+                        geocoder.reverseGeocodeLocation(favLocations[i], preferredLocale: nil, completionHandler: {(placemarks, error) in
                             
-                            favAddresses[i] = administrativeArea + locality + throughfare + subThoroughfare
-                        }
-                    })
+                            if let error = error {
+                                print("お気に入りの住所取得エラー: \(error)")
+                                return
+                            }
+                            
+                            if let placemark = placemarks?.first,
+                               let administrativeArea = placemark.administrativeArea,    //県
+                               let locality = placemark.locality,    // 市区町村
+                               let throughfare = placemark.thoroughfare,    // 丁目を含む地名
+                               let subThoroughfare = placemark.subThoroughfare {    // 番地
+                                
+                                favAddresses[i] = administrativeArea + locality + throughfare + subThoroughfare
+                            }
+                        })
+                    }
                 }
                 
                 userDefaults.set(favPlaces, forKey: "favPlaces")
