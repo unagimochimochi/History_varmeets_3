@@ -709,6 +709,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         let now = Date()
         let calendar = Calendar(identifier: .japanese)
         
+        estimatedTimesSort.removeAll()
+        
         // 予定が登録されているとき
         if estimatedTimes.isEmpty == false {
             // 並べ替え用の配列に予定時刻をセット

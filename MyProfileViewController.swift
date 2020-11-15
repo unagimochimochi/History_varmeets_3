@@ -115,11 +115,11 @@ class MyProfileViewController: UIViewController {
     }
     
     @objc func completeFetchingMyBio() {
-        print("fetchingBio")
+        print("Now fetching my bio...")
         
         if check != 0 {
             
-            print("completedFetchingMyBio!")
+            print("Completed fetching my bio!")
             
             // タイマーを止める
             if let workingTimer = timer {
@@ -129,13 +129,21 @@ class MyProfileViewController: UIViewController {
             if check == 1 {
                 // bioを表示
                 bioLabel.text = fetchedBio
-                bioLabel.textColor = .black
+                if #available(iOS 13.0, *) {
+                    bioLabel.textColor = .label
+                } else {
+                    bioLabel.textColor = .black
+                }
             }
             
             else if check == 2 {
                 // bioが空であることを表示
                 bioLabel.text = "自己紹介が未入力です"
-                bioLabel.textColor = .systemGray
+                if #available(iOS 13.0, *) {
+                    bioLabel.textColor = .placeholderText
+                } else {
+                    bioLabel.textColor = .systemGray
+                }
             }
         }
     }

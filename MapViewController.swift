@@ -94,6 +94,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         locationManager.allowsBackgroundLocationUpdates = true
         
         initMap()
+        
+        recordLocation()
 
         placeSearchBar.delegate = self
     }

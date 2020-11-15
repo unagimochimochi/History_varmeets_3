@@ -132,7 +132,7 @@ class MenuViewController: UIViewController {
     // Safariで使用許諾契約を開く
     @IBAction func openEULA(_ sender: Any) {
         
-        let url = URL(string: "https://docs.google.com/document/d/1dtr_aG0XdNmxUX1YBFORL9LBbFEmoOLsN1THL6C0Y_Q/edit?usp=sharing")!
+        let url = URL(string: "https://drive.google.com/file/d/1OhF2qtKDzPRUqdwaoGzNBbLYdWum88YY/view?usp=sharing")!
         
         if UIApplication.shared.canOpenURL(url) {
             UIApplication.shared.open(url)
@@ -144,7 +144,7 @@ class MenuViewController: UIViewController {
     // Safariでプライバシーポリシーを開く
     @IBAction func openPrivacyPolicy(_ sender: Any) {
         
-        let url = URL(string: "https://docs.google.com/document/d/1gYIOe1lBswG3dwJm6UsYKESD-LUpynP5NIxAMxNpcQ4/edit?usp=sharing")!
+        let url = URL(string: "https://drive.google.com/file/d/1CSu73HPBuIk0Tqhtvhul-vx-C6_ykUHw/view?usp=sharing")!
         
         if UIApplication.shared.canOpenURL(url) {
             UIApplication.shared.open(url)
@@ -177,7 +177,7 @@ class MenuViewController: UIViewController {
     
     
     @objc func fetchingBio() {
-        print("Now fetching my bio")
+        print("Now fetching my bio...")
         
         if fetchingBioCheck != 0 {
             print("Completed fetching my bio!")
@@ -190,13 +190,21 @@ class MenuViewController: UIViewController {
             if fetchingBioCheck == 1 {
                 // bioを表示
                 bioLabel.text = fetchedBio
-                bioLabel.textColor = .black
+                if #available(iOS 13.0, *) {
+                    bioLabel.textColor = .label
+                } else {
+                    bioLabel.textColor = .black
+                }
             }
             
             else if fetchingBioCheck == 2 {
                 // bioが空であることを表示
                 bioLabel.text = "自己紹介が未入力です"
-                bioLabel.textColor = .systemGray
+                if #available(iOS 13.0, *) {
+                    bioLabel.textColor = .placeholderText
+                } else {
+                    bioLabel.textColor = .systemGray
+                }
             }
         }
     }
