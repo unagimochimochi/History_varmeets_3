@@ -697,7 +697,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         
         if editingStyle == .delete {
-            remove(index: indexPath.row)
+            remove(index: indexPath.row, completion: {})
             tableView.deleteRows(at: [indexPath], with: .fade)
         }
     }
@@ -791,7 +791,14 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             // 一番近い予定のindexを取得
             if let index = estimatedTimes.index(of: estimatedTimesSort[0]) {
                 // index番目の配列とuserDefaultsを削除
-                self.remove(index: index)
+                self.remove(index: index, completion: {
+                    // 削除後メインスレッドで処理
+                    DispatchQueue.main.async { [weak self] in
+                        guard let `self` = self else { return }
+                        // UI更新
+                        self.planTable.reloadData()
+                    }
+                })
             }
         })
         
@@ -1059,7 +1066,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     
     @objc func fetchingPlans() {
-        print("Now fetching plans")
+        print("Now fetching plans...")
         
         fetchPlansTimerCount += 0.5
         
@@ -1381,7 +1388,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 
                 for _ in 0...(myPlanIDs.count - 1) {
                     self.dateAndTimes.append("日時")
-                    estimatedTimes.append(Date(timeIntervalSinceReferenceDate: 0.0))
+                    estimatedTimes.append(Date(timeIntervalSinceNow: 10.0))
                     self.planTitles.append("予定サンプル")
                     self.participantIDs.append("participantID")
                     self.participantNames.append("参加者")
@@ -1497,7 +1504,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     
     
-    func remove(index: Int) {
+    func remove(index: Int, completion: @escaping () -> ()) {
         
         myPlanIDs.remove(at: index)
         userDefaults.set(myPlanIDs, forKey: "PlanIDs")
@@ -1548,13 +1555,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         print("データベースの予定ID削除エラー2: \(error)")
                         return
                     }
-                    
                     print("データベースの予定ID削除成功")
+                    completion()
                 })
             }
         })
-        
-        planTable.reloadData()
     }
     
     
