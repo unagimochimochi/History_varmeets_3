@@ -22,24 +22,31 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     var dateAndTimes = [String]()
     var planTitles = [String]()
-    var participantIDs = [String]()             // 起動時にデータベースから取得
-    var participantNames = [String]()
-    var numberOfParticipants = [Int]()
+    var participantIDs = [[String]]()              // 起動時にデータベースから取得
     var places = [String]()
     var lons = [String]()
     var lats = [String]()
     
+    var addOrEdit: String?
+    
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
-    var planIDsOnDatabase = [[String]]()       // 予定作成時・編集時にデータベースから取得
+    var planIDsOnDatabase = [[String]]()           // 予定作成時・編集時にデータベースから取得
     var planIDsModifySuccess = [Bool?]()
+    var toSavePreparedParticipantIDs = [String]()   // 予定作成時・編集時にデータベースに保存する予定参加候補者ID
+    var everyoneIDs = [String]()                  // 予定作成時にチェックする作成者・参加者・参加候補者ID
+    var newParticipantIDs = [String]()             // 予定編集時にチェックする新たに追加した参加候補者ID
+    
+    var savePlanRecordTimer: Timer!
+    
+    var selectedIndexPath: Int?
     
     var fetchedRequests = ["NO", "NO", "NO"]
-    var friendIDs = [String]()                 // 起動時の自分の友だち一覧
-    var friendIDsToMe = [String]()             // friendIDs配列に申請許可者を追加した一覧
+    var friendIDs = [String]()                    // 起動時の自分の友だち一覧
+    var friendIDsToMe = [String]()                // friendIDs配列に申請許可者を追加した一覧
     var requestedIDs = [String]()
     var fetchedApplicantFriendIDs = [[String]]()
-    var fetchedPreparedPlanIDs = [String]()     // 起動時にデータベースから取得する自分の予定候補ID
+    var fetchedPreparedPlanIDs = [String]()        // 起動時にデータベースから取得する自分の予定候補ID
     
     var timer: Timer!
     
@@ -235,9 +242,17 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         self.planTitles.append(approvedPlanVC.planTitle!)
                         estimatedTimes.append(approvedPlanVC.estimatedTime!)
                         self.dateAndTimes.append(approvedPlanVC.dateAndTime!)
-                        self.participantIDs.append(approvedPlanVC.authorID!)
-                        self.participantNames.append(approvedPlanVC.authorName!)
-                        self.numberOfParticipants.append(approvedPlanVC.everyoneIDsExceptAuthor.count + 1)
+                        
+                        // まず予定作成者以外を代入
+                        var everyoneIDsExceptMe = approvedPlanVC.everyoneIDsExceptAuthor
+                        // 予定作成者を追加
+                        everyoneIDsExceptMe.append(approvedPlanVC.authorID!)
+                        // 自分のIDを抜く
+                        if let index = everyoneIDsExceptMe.index(of: myID!) {
+                            everyoneIDsExceptMe.remove(at: index)
+                        }
+                        self.participantIDs.append(everyoneIDsExceptMe)
+                        
                         self.places.append(approvedPlanVC.place!)
                         self.lats.append((approvedPlanVC.location?.coordinate.latitude.description)!)
                         self.lons.append((approvedPlanVC.location?.coordinate.longitude.description)!)
@@ -318,19 +333,16 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         planIDsModifySuccess.removeAll()
         
         // 日時
-        var toSaveEstimatedTime: Date?
-        
         if let dateAndTime = addPlanVC.dateAndTime {
             
-            toSaveEstimatedTime = addPlanVC.estimatedTime!
-            
             if let selectedIndexPath = planTable.indexPathForSelectedRow {
+                
                 dateAndTimes[selectedIndexPath.row] = dateAndTime
-                estimatedTimes[selectedIndexPath.row] = toSaveEstimatedTime!
+                estimatedTimes[selectedIndexPath.row] = addPlanVC.estimatedTime!
                 
             } else {
                 dateAndTimes.append(dateAndTime)
-                estimatedTimes.append(toSaveEstimatedTime!)
+                estimatedTimes.append(addPlanVC.estimatedTime!)
             }
             
             userDefaults.set(dateAndTimes, forKey: "DateAndTimes")
@@ -338,11 +350,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         }
         
         // 予定タイトル
-        var toSavePlanTitle: String?
-        
         if let planTitle = addPlanVC.planTitle {
-            
-            toSavePlanTitle = planTitle
             
             if let selectedIndexPath = planTable.indexPathForSelectedRow {
                 planTitles[selectedIndexPath.row] = planTitle
@@ -355,39 +363,24 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         }
         
         // 参加者（参加候補者です！ややこしい）
-        var toSaveParticipantIDs = [String]()
-        
         if addPlanVC.everyoneNamesExceptAuthor.isEmpty == false {
             
-            toSaveParticipantIDs = addPlanVC.participantIDs
-            
-            let rep = addPlanVC.everyoneNamesExceptAuthor[0]
-            let number = addPlanVC.everyoneNamesExceptAuthor.count
+            self.toSavePreparedParticipantIDs = addPlanVC.participantIDs
             
             if let selectedIndexPath = planTable.indexPathForSelectedRow {
-                participantNames[selectedIndexPath.row] = rep
-                numberOfParticipants[selectedIndexPath.row] = number + 1
-                
+                participantIDs[selectedIndexPath.row] = addPlanVC.everyoneIDsExceptAuthor
             } else {
-                participantNames.append(rep)
-                numberOfParticipants.append(number + 1)
+                participantIDs.append(addPlanVC.everyoneIDsExceptAuthor)
             }
             
-            userDefaults.set(participantNames, forKey: "ParticipantNames")
-            userDefaults.set(numberOfParticipants, forKey: "NumberOfParticipants")
+            userDefaults.set(participantIDs, forKey: "ParticipantIDs")
         }
         
         // 場所
-        var toSavePlaceName: String?
-        var toSaveLocation: CLLocation?
-        
         if let place = addPlanVC.place {
 
             let lat = addPlanVC.lat
             let lon = addPlanVC.lon
-            
-            toSavePlaceName = place
-            toSaveLocation = CLLocation(latitude: Double(lat)!, longitude: Double(lon)!)
             
             if let selectedIndexPath = planTable.indexPathForSelectedRow {
                 places[selectedIndexPath.row] = place
@@ -408,12 +401,13 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if let selectedIndexPath = planTable.indexPathForSelectedRow {
             
             print("予定を編集")
+            addOrEdit = "edit"
             
-            let planID = myPlanIDs[selectedIndexPath.row]
+            self.selectedIndexPath = selectedIndexPath.row
             
             // 新たに追加した参加候補者
             // まず新旧参加候補者を代入
-            var newParticipantIDs = toSaveParticipantIDs
+            var newParticipantIDs = self.toSavePreparedParticipantIDs
             // 旧参加者・旧参加候補者
             var existingIDs = addPlanVC.existingParticipantIDs
             for existingPreparedParticipantID in addPlanVC.existingPreparedParticipantIDs {
@@ -431,6 +425,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     newParticipantIDs.remove(at: index)
                 }
             }
+            self.newParticipantIDs = newParticipantIDs
             
             if newParticipantIDs.isEmpty == false {
                 
@@ -438,8 +433,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 // planIDsOnDatabase = [[String](), [String](), ...]
                 for _ in 0...(newParticipantIDs.count - 1) {
                     planIDsOnDatabase.append([String]())
-                    planIDsModifySuccess.append(false)
+                    planIDsModifySuccess.append(nil)
                 }
+                
+                // タイマースタート
+                savePlanRecordTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(savePlanRecord), userInfo: nil, repeats: true)
                 
                 for i in 0...(newParticipantIDs.count - 1) {
                     fetchNewParticipantsPlanIDs(accountID: newParticipantIDs[i], index: i, completion: {
@@ -451,14 +449,13 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     })
                 }
             }
-            // 念のため2秒後に処理
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                
+            
+            // 新たな参加候補者がいないとき
+            else {
                 // 検索条件を作成
-                let predicate = NSPredicate(format: "planID == %@", argumentArray: [planID])
+                let predicate = NSPredicate(format: "planID == %@", argumentArray: [myPlanIDs[selectedIndexPath.row]])
                 let query = CKQuery(recordType: "Plans", predicate: predicate)
                 
-                // 検索した予定の中身を更新
                 self.publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
                     
                     if let error = error {
@@ -468,35 +465,10 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     
                     for record in records! {
                         
-                        if let savePlanTitle = toSavePlanTitle {
-                            record["planTitle"] = savePlanTitle as NSString
-                        }
-                            
-                        if let saveEstimatedTime = toSaveEstimatedTime {
-                            record["estimatedTime"] = saveEstimatedTime as Date
-                        }
-                            
-                        if toSaveParticipantIDs.isEmpty == false {
-                            
-                            for i in 0...(self.planIDsModifySuccess.count - 1) {
-                                if self.planIDsModifySuccess[i] == false {
-                                    if let index = toSaveParticipantIDs.index(of: newParticipantIDs[i]) {
-                                        toSaveParticipantIDs.remove(at: index)
-                                        self.alert(title: "参加者のエラー", message: "\(newParticipantIDs[i])を参加者に指定することができませんでした。\n相手が待ち合わせ中の場合、このエラーが発生することがあります。時間をおいてもう一度参加者に指定してください。")
-                                    }
-                                }
-                            }
-                            
-                            record["preparedParticipantIDs"] = toSaveParticipantIDs as [String]
-                        }
-                            
-                        if let savePlaceName = toSavePlaceName {
-                            record["placeName"] = savePlaceName as NSString
-                        }
-                            
-                        if let saveLocation = toSaveLocation {
-                            record["placeLatAndLon"] = saveLocation
-                        }
+                        record["planTitle"] = self.planTitles[selectedIndexPath.row] as String
+                        record["estimatedTime"] = estimatedTimes[selectedIndexPath.row] as Date
+                        record["placeName"] = self.places[selectedIndexPath.row] as String
+                        record["placeLatAndLon"] = CLLocation(latitude: Double(self.lats[selectedIndexPath.row])!, longitude: Double(self.lons[selectedIndexPath.row])!)
                         
                         self.publicDatabase.save(record, completionHandler: {(record, error) in
                             
@@ -504,17 +476,20 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                                 print("予定更新エラー2: \(error)")
                                 return
                             }
-                            
                             print("予定更新成功")
                         })
                     }
                 })
+                
+                planTable.reloadData()
             }
         }
         
         // 新たに予定を作成したとき
         else {
             print("予定を作成")
+            addOrEdit = "add"
+            
             // 10桁の予定ID生成
             let planID = generatePlanID(length: 10)
             myPlanIDs.append(planID)
@@ -523,16 +498,20 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             // 作成者・参加者のIDを格納した配列
             var everyone = [myID!]
-            for participantID in toSaveParticipantIDs {
+            for participantID in self.toSavePreparedParticipantIDs {
                 everyone.append(participantID)
             }
+            self.everyoneIDs = everyone
             
             // 人数分の初期値を入れる
             // planIDsOnDatabase = [[String](), [String](), ...]
             for _ in 0...(everyone.count - 1) {
                 planIDsOnDatabase.append([String]())
-                planIDsModifySuccess.append(false)
+                planIDsModifySuccess.append(nil)
             }
+            
+            // タイマースタート
+            savePlanRecordTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(savePlanRecord), userInfo: nil, repeats: true)
             
             for i in 0...(everyone.count - 1) {
                 fetchPlanIDs(accountID: everyone[i], index: i, completion: {
@@ -544,59 +523,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 })
             }
             
-            // 念のため2秒後に処理
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                
-                let recordID = CKRecord.ID(recordName: "planID-\(planID)")
-                let record = CKRecord(recordType: "Plans", recordID: recordID)
-                    
-                record["planID"] = planID as NSString
-                record["authorID"] = myID! as NSString
-                    
-                if let savePlanTitle = toSavePlanTitle {
-                    record["planTitle"] = savePlanTitle as NSString
-                }
-                    
-                if let saveEstimatedTime = toSaveEstimatedTime {
-                    record["estimatedTime"] = saveEstimatedTime as Date
-                }
-                    
-                if toSaveParticipantIDs.isEmpty == false {
-                    
-                    // planIDsModifySuccess[0]は予定作成者なので無視
-                    for i in 1...(self.planIDsModifySuccess.count - 1) {
-                        if self.planIDsModifySuccess[i] == false {
-                            if let index = toSaveParticipantIDs.index(of: everyone[i]) {
-                                toSaveParticipantIDs.remove(at: index)
-                                print("\(everyone[i])をremove")
-                                self.alert(title: "参加者のエラー", message: "\(everyone[i])を参加者に指定することができませんでした。\n相手が待ち合わせ中の場合、このエラーが発生することがあります。時間をおいて、予定を編集する際にもう一度参加者に指定してみてください。")
-                            }
-                        }
-                    }
-                    
-                    record["preparedParticipantIDs"] = toSaveParticipantIDs as [String]
-                }
-                    
-                if let savePlaceName = toSavePlaceName {
-                    record["placeName"] = savePlaceName as NSString
-                }
-                    
-                if let saveLocation = toSaveLocation {
-                    record["placeLatAndLon"] = saveLocation
-                }
-                    
-                // レコードを保存
-                self.publicDatabase.save(record, completionHandler: {(record, error) in
-                    if let error = error {
-                        print("Plansタイプ予定保存エラー: \(error)")
-                        return
-                    }
-                    print("Plansタイプ予定保存成功")
-                })
-            }
+            planTable.reloadData()
         }
-        
-        self.planTable.reloadData()
     }
     
     
@@ -622,37 +550,39 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        if let indexPath = planTable.indexPathForSelectedRow {
-            print("deselect")
-            planTable.deselectRow(at: indexPath, animated: true)
-        }
-        
         hiddenCountdown()
         estimatedTimesSort.removeAll()
         
-        // 友だち申請関連初期化
-        if let workingTimer1 = fetchRequestsTimer {
-            workingTimer1.invalidate()
-        }
-        fetchedRequests = ["NO", "NO", "NO"]
-        fetchRequestsCheck = false
-        
-        // 予定候補ID初期化
-        fetchedPreparedPlanIDs.removeAll()
-        
-        // 友だち一覧初期化
-        friendIDs.removeAll()
-        
-        // 予定取得関連初期化
-        if let workingTimer2 = fetchPlansTimer {
-            workingTimer2.invalidate()
-        }
-        fetchPlansTimerCount = 0.0
-        fetchPlansCheck.removeAll()
-        noPlansOnDatabase = nil
-        
-        if myID != nil {
-            firstWork()
+        if let indexPath = planTable.indexPathForSelectedRow {
+            print("deselect")
+            planTable.deselectRow(at: indexPath, animated: true)
+            
+        } else {
+            
+            // 友だち申請関連初期化
+            if let workingTimer1 = fetchRequestsTimer {
+                workingTimer1.invalidate()
+            }
+            fetchedRequests = ["NO", "NO", "NO"]
+            fetchRequestsCheck = false
+            
+            // 予定候補ID初期化
+            fetchedPreparedPlanIDs.removeAll()
+            
+            // 友だち一覧初期化
+            friendIDs.removeAll()
+            
+            // 予定取得関連初期化
+            if let workingTimer2 = fetchPlansTimer {
+                workingTimer2.invalidate()
+            }
+            fetchPlansTimerCount = 0.0
+            fetchPlansCheck.removeAll()
+            noPlansOnDatabase = nil
+            
+            if myID != nil {
+                firstWork()
+            }
         }
  
         // 1秒ごとに処理
@@ -707,10 +637,10 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         let participantLabel = cell.viewWithTag(4) as! UILabel
         
-        if numberOfParticipants[indexPath.row] <= 1 {
-            participantLabel.text = self.participantNames[indexPath.row]
+        if participantIDs[indexPath.row].count <= 1 {
+            participantLabel.text = self.participantIDs[indexPath.row][0]
         } else {
-            participantLabel.text = "\(self.participantNames[indexPath.row]) 他"
+            participantLabel.text = "\(self.participantIDs[indexPath.row][0]) 他"
         }
         
         let placeLabel = cell.viewWithTag(5) as! UILabel
@@ -1055,11 +985,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 }
             }
             
-            self.numberOfParticipants[index] = everyone.count
-            
             if let myIndex = everyone.index(of: myID!) {
                 everyone.remove(at: myIndex)
-                self.participantIDs[index] = everyone[0]    // 代表参加者（0番目）のID
+                self.participantIDs[index] = everyone
             }
             
             if let place = record?.value(forKey: "placeName") as? String {
@@ -1069,27 +997,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             if let location = record?.value(forKey: "placeLatAndLon") as? CLLocation {
                 self.lats[index] = location.coordinate.latitude.description
                 self.lons[index] = location.coordinate.longitude.description
-            }
-            
-            completion()
-        })
-    }
-    
-    
-    
-    func fetchParticipantName(index: Int, completion: @escaping () -> ()) {
-        
-        let recordID = CKRecord.ID(recordName: "accountID-\(participantIDs[index])")
-        
-        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
-            
-            if let error = error {
-                print("参加者（\(self.participantIDs[index])）の名前取得エラー: \(error)")
-                return
-            }
-            
-            if let participantName = record?.value(forKey: "accountName") as? String {
-                self.participantNames[index] = participantName
             }
             
             completion()
@@ -1146,9 +1053,119 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     
-    
+    // 予定作成・編集時に参加者のレコードを編集したあと予定のレコードを追加（編集）する
     @objc func savePlanRecord() {
         print("Now saving user's record...")
+        
+        // すべてにtrueかfalseが入ったら
+        if self.planIDsModifySuccess.contains(nil) == false {
+            
+            if let workingTimer = self.savePlanRecordTimer {
+                workingTimer.invalidate()
+            }
+            
+            // 予定を作成
+            if self.addOrEdit == "add" {
+                
+                if let newPlanID = myPlanIDs.last,
+                   let newPlanTitle = self.planTitles.last,
+                   let newEstimatedTime = estimatedTimes.last,
+                   let newPlaceName = self.places.last,
+                   let newLat = self.lats.last,
+                   let newLon = self.lons.last {
+                    
+                    let recordID = CKRecord.ID(recordName: "planID-\(newPlanID)")
+                    let record = CKRecord(recordType: "Plans", recordID: recordID)
+                    
+                    record["planID"] = newPlanID as String
+                    record["planTitle"] = newPlanTitle as String
+                    record["estimatedTime"] = newEstimatedTime as Date
+                    record["authorID"] = myID! as String
+                    record["placeName"] = newPlaceName as String
+                    record["placeLatAndLon"] = CLLocation(latitude: Double(newLat)!, longitude: Double(newLon)!)
+                    
+                    // planIDsModifySuccess[0]は予定作成者なので無視
+                    for i in 1...(self.planIDsModifySuccess.count - 1) {
+                        if self.planIDsModifySuccess[i] == false {
+                            if let index = self.toSavePreparedParticipantIDs.index(of: self.everyoneIDs[i]) {
+                                self.toSavePreparedParticipantIDs.remove(at: index)
+                                print("\(everyoneIDs[index])をremove")
+                                self.alert(title: "参加者のエラー", message: "\(everyoneIDs[i])を参加者に指定することができませんでした。\n相手が待ち合わせ中の場合、このエラーが発生することがあります。時間をおいて、予定を編集する際にもう一度参加者に指定してみてください。")
+                            }
+                        }
+                    }
+                    record["preparedParticipantIDs"] = toSavePreparedParticipantIDs as [String]
+                    
+                    // レコードを保存
+                    self.publicDatabase.save(record, completionHandler: {(record, error) in
+                        
+                        if let error = error {
+                            print("Plansタイプ予定保存エラー: \(error)")
+                            return
+                        }
+                        print("Plansタイプ予定保存成功")
+                    })
+                }
+            }
+            
+            // 予定を編集
+            else if self.addOrEdit == "edit" {
+                
+                let editedPlanID = myPlanIDs[selectedIndexPath!]
+                let editedPlanTitle = self.planTitles[selectedIndexPath!]
+                let editedEstimatedTime = estimatedTimes[selectedIndexPath!]
+                let editedPlaceName = self.places[selectedIndexPath!]
+                let editedLat = self.lats[selectedIndexPath!]
+                let editedLon = self.lons[selectedIndexPath!]
+                
+                print(editedEstimatedTime)
+                    
+                let predicate = NSPredicate(format: "planID == %@", argumentArray: [editedPlanID])
+                let query = CKQuery(recordType: "Plans", predicate: predicate)
+                
+                self.publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                    
+                    if let error = error {
+                        print("予定更新エラー1: \(error)")
+                        return
+                    }
+                    
+                    for record in records! {
+                        
+                        record["planTitle"] = editedPlanTitle as String
+                        record["estimatedTime"] = editedEstimatedTime as Date
+                        record["placeName"] = editedPlaceName as String
+                        record["placeLatAndLon"] = CLLocation(latitude: Double(editedLat)!, longitude: Double(editedLon)!)
+                        
+                        for i in 0...(self.planIDsModifySuccess.count - 1) {
+                            if self.planIDsModifySuccess[i] == false {
+                                if let index = self.toSavePreparedParticipantIDs.index(of: self.newParticipantIDs[i]) {
+                                    self.toSavePreparedParticipantIDs.remove(at: index)
+                                    print("\(self.newParticipantIDs[index])をremove")
+                                    // メインスレッドで処理
+                                    DispatchQueue.main.async { [weak self] in
+                                        guard let `self` = self else { return }
+                                        self.alert(title: "参加者のエラー", message: "\(self.newParticipantIDs[i])を参加者に指定することができませんでした。\n相手が待ち合わせ中の場合、このエラーが発生することがあります。時間をおいて、予定を編集する際にもう一度参加者に指定してみてください。")
+                                    }
+                                }
+                            }
+                        }
+                        record["preparedParticipantIDs"] = self.toSavePreparedParticipantIDs as [String]
+                        
+                        self.publicDatabase.save(record, completionHandler: {(record, error) in
+                            
+                            if let error = error {
+                                print("予定更新エラー2: \(error)")
+                                return
+                            }
+                            print("予定更新成功")
+                        })
+                    }
+                })
+                
+                planTable.reloadData()
+            }
+        }
     }
     
     
@@ -1425,8 +1442,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             estimatedTimes.removeAll()
             self.planTitles.removeAll()
             self.participantIDs.removeAll()
-            self.participantNames.removeAll()
-            self.numberOfParticipants.removeAll()
             self.places.removeAll()
             self.lats.removeAll()
             self.lons.removeAll()
@@ -1437,9 +1452,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     self.dateAndTimes.append("日時")
                     estimatedTimes.append(Date(timeIntervalSinceNow: 7200.0))   // 2時間（7200秒）後
                     self.planTitles.append("予定サンプル")
-                    self.participantIDs.append("participantID")
-                    self.participantNames.append("参加者")
-                    self.numberOfParticipants.append(0)
+                    self.participantIDs.append([String]())
                     self.places.append("場所")
                     self.lats.append("緯度")
                     self.lons.append("経度")
@@ -1457,23 +1470,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         formatter.locale = Locale(identifier: "ja_JP")
                         self.dateAndTimes[i] = formatter.string(from: estimatedTimes[i])
                         
-                        // 参加代表者のIDから名前を取得
-                        self.fetchParticipantName(index: i, completion: {
-                            
-                            // 完了チェック
-                            self.fetchPlansCheck[i] = true
-                            
-                            // UserDefaultsに保存
-                            userDefaults.set(myPlanIDs, forKey: "PlanIDs")
-                            userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
-                            userDefaults.set(estimatedTimes, forKey: "EstimatedTimes")
-                            userDefaults.set(self.planTitles, forKey: "PlanTitles")
-                            userDefaults.set(self.participantNames, forKey: "ParticipantNames")
-                            userDefaults.set(self.numberOfParticipants, forKey: "NumberOfParticipants")
-                            userDefaults.set(self.places, forKey: "Places")
-                            userDefaults.set(self.lats, forKey: "lats")
-                            userDefaults.set(self.lons, forKey: "lons")
-                        })
+                        // UserDefaultsに保存
+                        userDefaults.set(myPlanIDs, forKey: "PlanIDs")
+                        userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
+                        userDefaults.set(estimatedTimes, forKey: "EstimatedTimes")
+                        userDefaults.set(self.planTitles, forKey: "PlanTitles")
+                        userDefaults.set(self.participantIDs, forKey: "ParticipantIDs")
+                        userDefaults.set(self.places, forKey: "Places")
+                        userDefaults.set(self.lats, forKey: "lats")
+                        userDefaults.set(self.lons, forKey: "lons")
+                        
+                        // 完了チェック
+                        self.fetchPlansCheck[i] = true
                     })
                 }
             }
@@ -1515,12 +1523,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.planTitles = userDefaults.stringArray(forKey: "PlanTitles")!
         }
         
-        if userDefaults.object(forKey: "ParticipantNames") != nil {
-            self.participantNames = userDefaults.stringArray(forKey: "ParticipantNames")!
-        }
-        
-        if userDefaults.object(forKey: "NumberOfParticipants") != nil {
-            self.numberOfParticipants = userDefaults.array(forKey: "NumberOfParticipants") as! [Int]
+        if userDefaults.object(forKey: "ParticipantIDs") != nil {
+            self.participantIDs = userDefaults.array(forKey: "ParticipantIDs") as! [[String]]
         }
         
         if userDefaults.object(forKey: "Places") != nil {
@@ -1565,11 +1569,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         self.planTitles.remove(at: index)
         userDefaults.set(self.planTitles, forKey: "PlanTitles")
         
-        self.participantNames.remove(at: index)
-        userDefaults.set(self.participantNames, forKey: "ParticipantNames")
-        
-        self.numberOfParticipants.remove(at: index)
-        userDefaults.set(self.numberOfParticipants, forKey: "NumberOfParticipants")
+        self.participantIDs.remove(at: index)
+        userDefaults.set(self.participantIDs, forKey: "ParticipantIDs")
         
         self.places.remove(at: index)
         userDefaults.set(self.places, forKey: "Places")
