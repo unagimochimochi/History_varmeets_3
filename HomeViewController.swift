@@ -29,6 +29,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     var addOrEdit: String?
     
+    var indicator = UIActivityIndicatorView()
+    
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
     var planIDsOnDatabase = [[String]]()           // 予定作成時・編集時にデータベースから取得
@@ -581,6 +583,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             noPlansOnDatabase = nil
             
             if myID != nil {
+                
+                // indicatorの表示位置
+                indicator.center = view.center
+                // indicatorのスタイル
+                indicator.style = .whiteLarge
+                // indicatorの色
+                indicator.color = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+                // indicatorをviewに追加
+                view.addSubview(indicator)
+                // indicatorを表示 & アニメーション開始
+                indicator.startAnimating()
+                
                 firstWork()
             }
         }
@@ -1012,6 +1026,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         // データベースの予定取得に5秒以上かかったとき
         if fetchPlansTimerCount >= 5.0 {
+            print("Failed fetching plans!")
             
             // タイマーを止める
             if let workingTimer = fetchPlansTimer {
@@ -1020,10 +1035,16 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             // ローカルで予定を読み込む
             readUserDefaults()
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
+                // UI更新
+                self.planTable.reloadData()
+                // indicatorを非表示 & アニメーション終了
+                self.indicator.stopAnimating()
+            })
         }
         
         else if fetchPlansCheck.isEmpty == false && fetchPlansCheck.contains(false) == false {
-            
             print("Completed fetching plans!")
             
             // タイマーを止める
@@ -1031,9 +1052,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 workingTimer.invalidate()
             }
             
-            // UI更新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
+                // UI更新
                 self.planTable.reloadData()
+                // indicatorを非表示 & アニメーション終了
+                self.indicator.stopAnimating()
             })
         }
         
@@ -1045,9 +1068,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 workingTimer.invalidate()
             }
             
-            // UI更新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
+                // UI更新
                 self.planTable.reloadData()
+                // indicatorを非表示 & アニメーション終了
+                self.indicator.stopAnimating()
             })
         }
     }
@@ -1493,6 +1518,12 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 // タイマーを止める
                 if let workingTimer = self.fetchPlansTimer {
                     workingTimer.invalidate()
+                }
+                
+                // メインスレッドで処理
+                DispatchQueue.main.async {
+                    // indicatorを非表示 & アニメーション終了
+                    self.indicator.stopAnimating()
                 }
             }
         })

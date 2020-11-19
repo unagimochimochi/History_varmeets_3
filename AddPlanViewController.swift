@@ -304,10 +304,7 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
             cell.textLabel?.text = planItem[indexPath.row]
 
             if let place = self.place {
-                print("place: \(place)")
                 cell.displayPlaceTextField.text = place
-            } else {
-                print("nil")
             }
             
             return cell

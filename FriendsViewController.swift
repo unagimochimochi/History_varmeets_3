@@ -24,39 +24,16 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
     var friendBios = [String]()
     
     var timer: Timer!
-    var check = [Bool]()
+    var check = [Bool?]()
+    
+    var friendFriends = [String]()
+    
+    var indicator = UIActivityIndicatorView()
         
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        friendIDs.removeAll()
-        friendNames.removeAll()
-        friendBios.removeAll()
-        check.removeAll()
-        
-        friendsTableView.reloadData()
-        
-        // タイマースタート
-        timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingFriends), userInfo: nil, repeats: true)
-        
-        fetchFriends(completion: {
-            // 友だち一覧を取得し終えたら名前とbioに初期値（ID）を代入
-            if self.friendIDs.isEmpty == false {
-                
-                for i in 0...(self.friendIDs.count - 1) {
-                    self.friendNames.append(self.friendIDs[i])
-                    self.friendBios.append(self.friendIDs[i])
-                    self.check.append(false)
-                }
-                
-                // 名前とbioを取得
-                for i in 0...(self.friendIDs.count - 1) {
-                    self.fetchFriendInfo(index: i, completion: {
-                        self.check[i] = true
-                    })
-                }
-            }
-        })
+        readFriends()
     }
     
 
@@ -77,12 +54,30 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
             workingTimer.invalidate()
         }
         
+        readFriends()
+    }
+    
+    
+    
+    func readFriends() {
+        
         friendIDs.removeAll()
         friendNames.removeAll()
         friendBios.removeAll()
         check.removeAll()
         
         friendsTableView.reloadData()
+        
+        // indicatorの表示位置
+        indicator.center = view.center
+        // indicatorのスタイル
+        indicator.style = .whiteLarge
+        // indicatorの色
+        indicator.color = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+        // indicatorをviewに追加
+        view.addSubview(indicator)
+        // indicatorを表示 & アニメーション開始
+        indicator.startAnimating()
         
         // タイマースタート
         timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingFriends), userInfo: nil, repeats: true)
@@ -94,14 +89,12 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
                 for i in 0...(self.friendIDs.count - 1) {
                     self.friendNames.append(self.friendIDs[i])
                     self.friendBios.append(self.friendIDs[i])
-                    self.check.append(false)
+                    self.check.append(nil)
                 }
                 
                 // 名前とbioを取得
                 for i in 0...(self.friendIDs.count - 1) {
-                    self.fetchFriendInfo(index: i, completion: {
-                        self.check[i] = true
-                    })
+                    self.fetchFriendInfo(index: i)
                 }
             }
         })
@@ -110,9 +103,9 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
     
     
     @objc func fetchingFriends() {
-        print("Now fetching my friends")
+        print("Now fetching my friends...")
         
-        if check.contains(false) == false {
+        if check.isEmpty == false && check.contains(nil) == false {
             print("Completed fetching my friends!")
             
             // タイマーを止める
@@ -120,8 +113,23 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
                 workingTimer.invalidate()
             }
             
-            // UI更新
-            friendsTableView.reloadData()
+            // indicatorを非表示 & アニメーション終了
+            indicator.stopAnimating()
+            
+            // すべてtrue
+            if check.contains(false) == false {
+                // UI更新
+                friendsTableView.reloadData()
+            }
+            
+            // falseを含む
+            else {
+                let dialog = UIAlertController(title: "エラー", message: "友だちの取得に失敗しました。\n更新ボタンでもう一度お試しください。", preferredStyle: .alert)
+                // OKボタン
+                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                // ダイアログを表示
+                self.present(dialog, animated: true, completion: nil)
+            }
         }
     }
     
@@ -152,7 +160,7 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
     
     
     
-    func fetchFriendInfo(index: Int, completion: @escaping () -> ()) {
+    func fetchFriendInfo(index: Int) {
         
         let recordID = CKRecord.ID(recordName: "accountID-\(friendIDs[index])")
         
@@ -160,11 +168,15 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
             
             if let error = error {
                 print("友だちの情報取得エラー: \(error)")
+                self.check[index] = false
                 return
             }
             
             if let name = record?.value(forKey: "accountName") as? String {
                 self.friendNames[index] = name
+                self.check[index] = true
+            } else {
+                self.check[index] = false
             }
             
             if let bio = record?.value(forKey: "accountBio") as? String {
@@ -172,8 +184,76 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
             } else {
                 self.friendBios[index] = "自己紹介が未入力です"
             }
+        })
+    }
+    
+    
+    
+    func fetchFriendFriends(friendID: String, completion: @escaping () -> ()) {
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(friendID)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
-            completion()
+            if let error = error {
+                print("友だちの友だち取得エラー: \(error)")
+                // メインスレッドで処理
+                DispatchQueue.main.async {
+                    self.alert(title: "エラー", message: "削除に失敗しました。\n時間をおいてもう一度お試しください。")
+                }
+                return
+            }
+            
+            if let friendFriends = record?.value(forKey: "friends") as? [String] {
+                for friendFriend in friendFriends {
+                    self.friendFriends.append(friendFriend)
+                }
+                completion()
+            }
+        })
+    }
+    
+    func modifyFriends(id: String, completion: @escaping () -> ()) {
+        
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [id])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("\(id)の友だち更新エラー1: \(error)")
+                // メインスレッドで処理
+                DispatchQueue.main.async {
+                    self.alert(title: "エラー", message: "削除に失敗しました。\n時間をおいてもう一度お試しください。")
+                }
+                return
+            }
+            
+            for record in records! {
+                
+                // 自分の友だちを更新するとき
+                if id == myID! {
+                    record["friends"] = self.friendIDs as [String]
+                }
+                // 友だちの友だちを更新するとき
+                else {
+                    record["friends"] = self.friendFriends as [String]
+                }
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("\(id)の友だち更新エラー2: \(error)")
+                        // メインスレッドで処理
+                        DispatchQueue.main.async {
+                            self.alert(title: "エラー", message: "削除に失敗しました。\n時間をおいてもう一度お試しください。")
+                        }
+                        return
+                    }
+                    print("\(id)の友だち更新成功")
+                    completion()
+                })
+            }
         })
     }
     
@@ -215,6 +295,59 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
     
     func tableView(_ table: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)
+    }
+    
+    
+    
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        
+        if editingStyle == .delete {
+            
+            // 消す友だちのID
+            let deletedFriendID = friendIDs[indexPath.row]
+            
+            // 友だちの友だち一覧を取得
+            fetchFriendFriends(friendID: deletedFriendID, completion: {
+                
+                // 友だちの友だち一覧から自分のIDを抜く
+                if let myIndex = self.friendFriends.index(of: myID!) {
+                    self.friendFriends.remove(at: myIndex)
+                }
+                // 自分のIDを抜いた友だちの友だち一覧を保存
+                // 自分ではなく友だちから処理すれば、万が一友だちのデータベース更新は成功して自分は失敗しても普通にチャレンジできる！
+                self.modifyFriends(id: deletedFriendID, completion: {
+                    
+                    // 自分の友だち一覧から友だちのID・名前・Bioを抜く
+                    if let friendIndex = self.friendIDs.index(of: deletedFriendID) {
+                        self.friendIDs.remove(at: friendIndex)
+                        self.friendNames.remove(at: friendIndex)
+                        self.friendBios.remove(at: friendIndex)
+                    }
+                    // 友だちのIDを抜いた自分の友だち一覧を保存
+                    self.modifyFriends(id: myID!, completion: {
+                        
+                        // メインスレッドで処理
+                        DispatchQueue.main.async {
+                            // セルを消す
+                            tableView.deleteRows(at: [indexPath], with: .fade)
+                            // アラートを表示
+                            self.alert(title: "削除完了", message: "\(deletedFriendID)と友だちではなくなりました。")
+                        }
+                    })
+                })
+            })
+        }
+    }
+    
+    
+    
+    func alert(title: String?, message: String?) {
+        
+        let dialog = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        // OKボタン
+        dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        // ダイアログを表示
+        self.present(dialog, animated: true, completion: nil)
     }
     
     

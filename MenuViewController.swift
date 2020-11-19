@@ -30,6 +30,8 @@ class MenuViewController: UIViewController {
     var fetchingBioTimer: Timer!
     var fetchingBioCheck = 0
     
+    @IBOutlet weak var versionLabel: UILabel!
+    
     
     
     override func viewDidLoad() {
@@ -39,6 +41,10 @@ class MenuViewController: UIViewController {
         icon.layer.borderWidth = 0.5 // 枠線の太さ
         icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
         icon.layer.masksToBounds = true // 丸の外側を消す
+        
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as! String
+        versionLabel.text = "Version \(version) (\(build))"
         
         fetchMyBio()
         
