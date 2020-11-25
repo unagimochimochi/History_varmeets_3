@@ -222,104 +222,89 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if let approvedPlanVC = sender.source as? ApprovePlanViewController {
             
             guard let approvedPlanID = approvedPlanVC.planID else {
-                alert(title: "エラー", message: "予定を承認できませんでした。")
+                DispatchQueue.main.async {
+                    self.alert(title: "エラー", message: "予定を承認できませんでした。")
+                }
                 return
             }
             
-            let predicate1 = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
-            let query1 = CKQuery(recordType: "Accounts", predicate: predicate1)
+            // 通知の許可を求める
+            // requestNotifications()
             
-            publicDatabase.perform(query1, inZoneWith: nil, completionHandler: {(records, error) in
+            // 予定を承認する場合
+            if approvedPlanVC.approval == true {
+                myPlanIDs.append(approvedPlanID)
+                self.planTitles.append(approvedPlanVC.planTitle!)
+                estimatedTimes.append(approvedPlanVC.estimatedTime!)
+                self.dateAndTimes.append(approvedPlanVC.dateAndTime!)
                 
-                if let error = error {
-                    print("予定承認（Accounts）エラー1: \(error)")
-                    return
+                // まず予定作成者以外を代入
+                var everyoneIDsExceptMe = approvedPlanVC.everyoneIDsExceptAuthor
+                // 予定作成者を追加
+                everyoneIDsExceptMe.append(approvedPlanVC.authorID!)
+                // 自分のIDを抜く
+                if let index = everyoneIDsExceptMe.index(of: myID!) {
+                    everyoneIDsExceptMe.remove(at: index)
                 }
+                self.participantIDs.append(everyoneIDsExceptMe)
                 
-                for record in records! {
-                    
-                    // 予定を承認する場合
-                    if approvedPlanVC.approval == true {
-                        myPlanIDs.append(approvedPlanID)
-                        self.planTitles.append(approvedPlanVC.planTitle!)
-                        estimatedTimes.append(approvedPlanVC.estimatedTime!)
-                        self.dateAndTimes.append(approvedPlanVC.dateAndTime!)
-                        
-                        // まず予定作成者以外を代入
-                        var everyoneIDsExceptMe = approvedPlanVC.everyoneIDsExceptAuthor
-                        // 予定作成者を追加
-                        everyoneIDsExceptMe.append(approvedPlanVC.authorID!)
-                        // 自分のIDを抜く
-                        if let index = everyoneIDsExceptMe.index(of: myID!) {
-                            everyoneIDsExceptMe.remove(at: index)
-                        }
-                        self.participantIDs.append(everyoneIDsExceptMe)
-                        
-                        self.places.append(approvedPlanVC.place!)
-                        self.lats.append((approvedPlanVC.location?.coordinate.latitude.description)!)
-                        self.lons.append((approvedPlanVC.location?.coordinate.longitude.description)!)
-                    }
-                    record["planIDs"] = myPlanIDs as [String]
-                    
-                    // 起動時に取得した予定候補ID一覧から承認／非承認する予定IDを抜く
-                    if let index = self.fetchedPreparedPlanIDs.index(of: approvedPlanID) {
-                        self.fetchedPreparedPlanIDs.remove(at: index)
-                    }
-                    record["preparedPlanIDs"] = self.fetchedPreparedPlanIDs as [String]
-                    
-                    self.publicDatabase.save(record, completionHandler: {(record, error) in
-                        
-                        if let error = error {
-                            print("予定承認（Accounts）エラー2: \(error)")
-                            return
-                        }
-                        print("予定承認（Accounts）成功")
-                    })
-                }
-            })
-            
-            let predicate2 = NSPredicate(format: "planID == %@", argumentArray: [approvedPlanID])
-            let query2 = CKQuery(recordType: "Plans", predicate: predicate2)
-            
-            publicDatabase.perform(query2, inZoneWith: nil, completionHandler: {(records, error) in
-                
-                if let error = error {
-                    print("予定承認（Plans）エラー1: \(error)")
-                    return
-                }
-                
-                for record in records! {
-                    
-                    var newParticipantIDs = [String]()
-                    newParticipantIDs = approvedPlanVC.participantIDs
-                    // 予定を承認する場合、参加者に自分のIDを追加
-                    if approvedPlanVC.approval == true {
-                        newParticipantIDs.append(myID!)
-                    }
-                    record["participantIDs"] = newParticipantIDs as [String]
-                    
-                    var newPreparedParticipantIDs = [String]()
-                    newPreparedParticipantIDs = approvedPlanVC.preparedParticipantIDs
-                    // 当初の予定参加候補者ID一覧から自分のIDを抜く
-                    if let index = newPreparedParticipantIDs.index(of: myID!) {
-                        newPreparedParticipantIDs.remove(at: index)
-                    }
-                    record["preparedParticipantIDs"] = newPreparedParticipantIDs as [String]
-                    
-                    self.publicDatabase.save(record, completionHandler: {(record, error) in
-                        
-                        if let error = error {
-                            print("予定承認（Plans）エラー2: \(error)")
-                            return
-                        }
-                        print("予定承認（Plans）成功")
-                    })
-                }
-            })
-            
-            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 1.0) {
-                self.planTable.reloadData()
+                self.places.append(approvedPlanVC.place!)
+                self.lats.append((approvedPlanVC.location?.coordinate.latitude.description)!)
+                self.lons.append((approvedPlanVC.location?.coordinate.longitude.description)!)
             }
+            
+            // 起動時に取得した予定候補ID一覧から承認／非承認する予定IDを抜く
+            if let index = self.fetchedPreparedPlanIDs.index(of: approvedPlanID) {
+                self.fetchedPreparedPlanIDs.remove(at: index)
+            }
+            
+            // 自分のレコードのplanIDsに許可した予定のIDを追加
+            addApprovedPlanID(completion: {
+                
+                // 予定のレコードのparticipantIDsに自分のIDを追加
+                
+                var newParticipantIDs = approvedPlanVC.participantIDs
+                // 予定を承認する場合、参加者に自分のIDを追加
+                if approvedPlanVC.approval == true {
+                    newParticipantIDs.append(myID!)
+                }
+                
+                var newPreparedParticipantIDs = approvedPlanVC.preparedParticipantIDs
+                // 当初の予定参加候補者ID一覧から自分のIDを抜く
+                if let index = newPreparedParticipantIDs.index(of: myID!) {
+                    newPreparedParticipantIDs.remove(at: index)
+                }
+                
+                let predicate = NSPredicate(format: "planID == %@", argumentArray: [approvedPlanID])
+                let query = CKQuery(recordType: "Plans", predicate: predicate)
+                
+                self.publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                    
+                    if let error = error {
+                        print("予定承認（Plans）エラー1: \(error)")
+                        return
+                    }
+                    
+                    for record in records! {
+                        
+                        record["participantIDs"] = newParticipantIDs as [String]
+                        record["preparedParticipantIDs"] = newPreparedParticipantIDs as [String]
+                        
+                        self.publicDatabase.save(record, completionHandler: {(record, error) in
+                            
+                            if let error = error {
+                                print("予定承認（Plans）エラー2: \(error)")
+                                return
+                            }
+                            print("予定承認（Plans）成功")
+                        })
+                    }
+                })
+                
+                DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 0.5) {
+                    self.planTable.reloadData()
+                }
+            })
         }
     }
     
@@ -333,6 +318,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         planIDsOnDatabase.removeAll()
         planIDsModifySuccess.removeAll()
+        
+        // 通知の許可を求める
+        // requestNotifications()
         
         // 日時
         if let dateAndTime = addPlanVC.dateAndTime {
@@ -561,40 +549,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
         } else {
             
-            // 友だち申請関連初期化
-            if let workingTimer1 = fetchRequestsTimer {
-                workingTimer1.invalidate()
-            }
-            fetchedRequests = ["NO", "NO", "NO"]
-            fetchRequestsCheck = false
-            
-            // 予定候補ID初期化
-            fetchedPreparedPlanIDs.removeAll()
-            
-            // 友だち一覧初期化
-            friendIDs.removeAll()
-            
-            // 予定取得関連初期化
-            if let workingTimer2 = fetchPlansTimer {
-                workingTimer2.invalidate()
-            }
-            fetchPlansTimerCount = 0.0
-            fetchPlansCheck.removeAll()
-            noPlansOnDatabase = nil
-            
             if myID != nil {
-                
-                // indicatorの表示位置
-                indicator.center = view.center
-                // indicatorのスタイル
-                indicator.style = .whiteLarge
-                // indicatorの色
-                indicator.color = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
-                // indicatorをviewに追加
-                view.addSubview(indicator)
-                // indicatorを表示 & アニメーション開始
-                indicator.startAnimating()
-                
                 firstWork()
             }
         }
@@ -1414,6 +1369,47 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     
     
+    // 予定承認・拒否（自分のレコード）
+    func addApprovedPlanID(completion: @escaping () -> ()) {
+        
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("予定承認（Accounts）エラー1: \(error)")
+                DispatchQueue.main.async {
+                    self.alert(title: "エラー", message: "予定を承認できませんでした。\n待ち合わせ中の場合、このエラーが発生することがあります。\n時間をおいてもう一度ホーム画面を開くと、再び予定承認可否の画面が出てきます。")
+                    self.firstWork()
+                }
+                return
+            }
+            
+            for record in records! {
+                
+                record["planIDs"] = myPlanIDs as [String]
+                record["preparedPlanIDs"] = self.fetchedPreparedPlanIDs as [String]
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("予定承認（Accounts）エラー2: \(error)")
+                        DispatchQueue.main.async {
+                            self.alert(title: "エラー", message: "予定を承認できませんでした。\n待ち合わせ中の場合、このエラーが発生することがあります。\n時間をおいてもう一度ホーム画面を開くと、再び予定承認可否の画面が出てきます。")
+                            self.firstWork()
+                        }
+                        return
+                    }
+                    print("予定承認（Accounts）成功")
+                    completion()
+                })
+            }
+        })
+    }
+    
+    
+    
     func generatePlanID(length: Int) -> String {
         let characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         return String((0 ..< length).map { _ in characters.randomElement()! })
@@ -1446,6 +1442,42 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     
     func firstWork() {
+        
+        // ------------------------------ ↓ 初期化関連 ------------------------------
+        
+        // 友だち申請関連初期化
+        if let workingTimer1 = fetchRequestsTimer {
+            workingTimer1.invalidate()
+        }
+        fetchedRequests = ["NO", "NO", "NO"]
+        fetchRequestsCheck = false
+        
+        // 予定候補ID初期化
+        fetchedPreparedPlanIDs.removeAll()
+        
+        // 友だち一覧初期化
+        friendIDs.removeAll()
+        
+        // 予定取得関連初期化
+        if let workingTimer2 = fetchPlansTimer {
+            workingTimer2.invalidate()
+        }
+        fetchPlansTimerCount = 0.0
+        fetchPlansCheck.removeAll()
+        noPlansOnDatabase = nil
+        
+        // ------------------------------ ↓ 取得開始 ------------------------------
+        
+        // indicatorの表示位置
+        indicator.center = view.center
+        // indicatorのスタイル
+        indicator.style = .whiteLarge
+        // indicatorの色
+        indicator.color = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+        // indicatorをviewに追加
+        view.addSubview(indicator)
+        // indicatorを表示 & アニメーション開始
+        indicator.startAnimating()
         
         // 友だち申請取得監視タイマースタート
         fetchRequestsTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingRequests), userInfo: nil, repeats: true)
@@ -1650,6 +1682,20 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         // ダイアログを表示
         self.present(dialog, animated: true, completion: nil)
+    }
+    
+    
+    
+    func requestNotifications() {
+        
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound, .badge], completionHandler: { granted, error in
+            
+            if let error = error {
+                print("通知許可エラー: \(error)")
+                return
+            }
+        })
     }
     
     
