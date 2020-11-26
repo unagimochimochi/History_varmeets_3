@@ -229,7 +229,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             }
             
             // 通知の許可を求める
-            // requestNotifications()
+            requestNotifications()
             
             // 予定を承認する場合
             if approvedPlanVC.approval == true {
@@ -320,7 +320,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         planIDsModifySuccess.removeAll()
         
         // 通知の許可を求める
-        // requestNotifications()
+        requestNotifications()
         
         // 日時
         if let dateAndTime = addPlanVC.dateAndTime {
@@ -1689,12 +1689,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     func requestNotifications() {
         
         let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound, .badge], completionHandler: { granted, error in
+        center.requestAuthorization(options: [.alert, .sound], completionHandler: { granted, error in
             
             if let error = error {
                 print("通知許可エラー: \(error)")
                 return
             }
+            
+            guard granted else { return }
+            
+            DispatchQueue.main.async(execute: {
+                UIApplication.shared.registerForRemoteNotifications()
+            })
         })
     }
     

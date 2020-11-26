@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import CloudKit
+import UserNotifications
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -22,6 +24,37 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         firstUserDefaults.register(defaults: firstLaunch)
         
         return true
+    }
+    
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        
+        if let id = myID {
+            
+            let predicate = NSPredicate(format: "destination == %@", argumentArray: [id])
+            let subscription = CKQuerySubscription(recordType: "Notifications", predicate: predicate, options: .firesOnRecordUpdate)
+            
+            let info = CKSubscription.NotificationInfo()
+            
+            info.titleLocalizationKey = "%1$@"
+            info.titleLocalizationArgs = ["notificationTitle"]
+            info.alertLocalizationKey = "%1$@"
+            info.alertLocalizationArgs = ["notificationContent"]
+            
+            info.soundName = "default"
+            
+            subscription.notificationInfo = info
+            
+            let publicDatabase = CKContainer.default().publicCloudDatabase
+            
+            publicDatabase.save(subscription, completionHandler: {(subscription, error) in
+                
+                if let error = error {
+                    print("サブスクリプション保存エラー: \(error)")
+                    return
+                }
+                print("サブスクリプション保存成功")
+            })
+        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -46,6 +79,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
     }
 
+}
 
+
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    
+    // アプリが起動しているとき
+        func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+            
+            if #available(iOS 14.0, *) {
+                completionHandler([.sound, .banner])
+            } else {
+                completionHandler([.sound])
+            }
+        }
+        
+        // アプリが起動していないとき
+        func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+            
+            completionHandler()
+        }
+    
 }
 
