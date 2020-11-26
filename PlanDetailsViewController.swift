@@ -34,6 +34,8 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
     var timer: Timer!
     var timerCount = 0.0
     
+    var indicator = UIActivityIndicatorView()
+    
     var place: String?
     var lonStr: String?
     var latStr: String?
@@ -42,9 +44,21 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
     
     @IBOutlet weak var planDetailsTableView: UITableView!
     @IBOutlet weak var dateAndTimeLabel: UILabel!
+    @IBOutlet weak var editButton: UIButton!
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // indicatorの表示位置
+        indicator.center = view.center
+        // indicatorのスタイル
+        indicator.style = .whiteLarge
+        // indicatorの色
+        indicator.color = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+        // indicatorをviewに追加
+        view.addSubview(indicator)
+        // indicatorを表示 & アニメーション開始
+        indicator.startAnimating()
         
         // タイマースタート
         timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingPlan), userInfo: nil, repeats: true)
@@ -307,6 +321,9 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
                 workingTimer.invalidate()
             }
             
+            // indicatorを非表示 & アニメーション終了
+            self.indicator.stopAnimating()
+            
             let dialog = UIAlertController(title: "エラー", message: "予定を取得できませんでした。", preferredStyle: .alert)
             // OKボタン
             dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
@@ -323,14 +340,20 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
         }
         
         if fetchSuccess.contains(false) == false {
+            print("Completed fetching Plan!")
             
             // タイマーを止める
             if let workingTimer = timer {
                 workingTimer.invalidate()
             }
             
-            print("Completed fetching Plan!")
-            planDetailsTableView.reloadData()
+            // UI更新
+            self.planDetailsTableView.reloadData()
+            // indicatorを非表示 & アニメーション終了
+            self.indicator.stopAnimating()
+            
+            // 編集できるようにする
+            self.editButton.isEnabled = true
         }
     }
         

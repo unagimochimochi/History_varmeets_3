@@ -113,23 +113,28 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
                 workingTimer.invalidate()
             }
             
-            // indicatorを非表示 & アニメーション終了
-            indicator.stopAnimating()
-            
             // すべてtrue
             if check.contains(false) == false {
-                // UI更新
-                friendsTableView.reloadData()
+                print("データベースから読み込み")
+                
+                // UserDefaultsに保存
+                userDefaults.set(self.friendIDs, forKey: "friendIDs")
+                userDefaults.set(self.friendNames, forKey: "friendNames")
+                userDefaults.set(self.friendBios, forKey: "friendBios")
             }
             
             // falseを含む
             else {
-                let dialog = UIAlertController(title: "エラー", message: "友だちの取得に失敗しました。\n更新ボタンでもう一度お試しください。", preferredStyle: .alert)
-                // OKボタン
-                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-                // ダイアログを表示
-                self.present(dialog, animated: true, completion: nil)
+                print("ローカルで読み込み")
+                
+                // ローカルで友だちを読み込む
+                readFriendsUserDefaults()
             }
+            
+            // UI更新
+            self.friendsTableView.reloadData()
+            // indicatorを非表示 & アニメーション終了
+            self.indicator.stopAnimating()
         }
     }
     
@@ -212,6 +217,8 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
             }
         })
     }
+    
+    
     
     func modifyFriends(id: String, completion: @escaping () -> ()) {
         
@@ -348,6 +355,23 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
         dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         // ダイアログを表示
         self.present(dialog, animated: true, completion: nil)
+    }
+    
+    
+    
+    func readFriendsUserDefaults() {
+        
+        if userDefaults.object(forKey: "friendIDs") != nil {
+            self.friendIDs = userDefaults.stringArray(forKey: "friendIDs")!
+        }
+        
+        if userDefaults.object(forKey: "friendNames") != nil {
+            self.friendNames = userDefaults.stringArray(forKey: "friendNames")!
+        }
+        
+        if userDefaults.object(forKey: "friendBios") != nil {
+            self.friendBios = userDefaults.stringArray(forKey: "friendBios")!
+        }
     }
     
     
