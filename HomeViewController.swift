@@ -86,19 +86,21 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             userDefaults.set(id, forKey: "myID")
             userDefaults.set(name, forKey: "myName")
             
+            // ------------------------------ ↓ アカウント作成 ------------------------------
+            
             let recordID = CKRecord.ID(recordName: "accountID-\(id)")
             let record = CKRecord(recordType: "Accounts", recordID: recordID)
             
-            record["accountID"] = id as NSString
-            record["accountName"] = name as NSString
-            record["password"] = password as NSString
-            record["requestedAccountID_01"] = "NO" as NSString
-            record["requestedAccountID_02"] = "NO" as NSString
-            record["requestedAccountID_03"] = "NO" as NSString
+            record["accountID"] = id as String
+            record["accountName"] = name as String
+            record["password"] = password as String
+            record["requestedAccountID_01"] = "NO" as String
+            record["requestedAccountID_02"] = "NO" as String
+            record["requestedAccountID_03"] = "NO" as String
             record["favPlaceNames"] = ["東京タワー（お気に入りサンプル）"] as [String]
             record["favPlaceLocations"] = [CLLocation(latitude: 35.658584, longitude: 139.7454316)] as [CLLocation]
             
-            // レコードを保存
+            // レコードを作成
             publicDatabase.save(record, completionHandler: {(record, error) in
                 
                 if let error = error {
@@ -107,6 +109,25 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 }
                 print("アカウント作成成功")
             })
+            
+            // ------------------------------ ↓ 通知のレコード作成 ------------------------------
+            
+            let nRecordID = CKRecord.ID(recordName: "notification-\(id)")
+            let nRecord = CKRecord(recordType: "Notifications", recordID: nRecordID)
+            
+            nRecord["destination"] = id as String
+            
+            // レコードを作成
+            publicDatabase.save(nRecord, completionHandler: {(record, error) in
+                
+                if let error = error {
+                    print("新規レコード（通知）保存エラー: \(error)")
+                    return
+                }
+                print("新規レコード（通知）作成成功")
+            })
+            
+            // ------------------------------ ↓ アカウントリストにIDを追加 ------------------------------
             
             var existingIDs = firstVC.existingIDs
             
@@ -125,8 +146,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 }
                 
                 for record in records! {
+                    
                     record["accounts"] = existingIDs as [String]
+                    
                     self.publicDatabase.save(record, completionHandler: {(record, error) in
+                        
                         if let error = error {
                             print("アカウントリスト追加エラー2: \(error)")
                             return

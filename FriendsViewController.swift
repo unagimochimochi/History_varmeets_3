@@ -97,6 +97,20 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
                     self.fetchFriendInfo(index: i)
                 }
             }
+            
+            // かつて友だちがいたが現在はいないとき、[friends]はnilではないが空
+            else {
+                DispatchQueue.main.async {
+                    
+                    // タイマーを止める
+                    if let workingTimer = self.timer {
+                        workingTimer.invalidate()
+                    }
+                    
+                    // indicatorを非表示 & アニメーション終了
+                    self.indicator.stopAnimating()
+                }
+            }
         })
     }
     
@@ -157,8 +171,21 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
                 for friendID in friendIDs {
                     self.friendIDs.append(friendID)
                 }
-                
                 completion()
+            }
+            
+            // 友だちがいないとき
+            else {
+                DispatchQueue.main.async {
+                    
+                    // タイマーを止める
+                    if let workingTimer = self.timer {
+                        workingTimer.invalidate()
+                    }
+                    
+                    // indicatorを非表示 & アニメーション終了
+                    self.indicator.stopAnimating()
+                }
             }
         })
     }
