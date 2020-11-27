@@ -1085,6 +1085,44 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         }
                         print("Plansタイプ予定保存成功")
                     })
+                    
+                    // 日付のフォーマット
+                    let formatter = DateFormatter()
+                    // 現地仕様で日付の出力
+                    formatter.timeStyle = .short
+                    formatter.dateStyle = .medium
+                    formatter.timeZone = NSTimeZone.local
+                    formatter.locale = Locale(identifier: "ja_JP")
+                    
+                    // 参加候補者に通知
+                    for participant in toSavePreparedParticipantIDs {
+                        
+                        let predicate = NSPredicate(format: "destination == %@", argumentArray: [participant])
+                        let query = CKQuery(recordType: "Notifications", predicate: predicate)
+                        
+                        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(nRecords, error) in
+                            
+                            if let error = error {
+                                print("通知エラー1: \(error)")
+                                return
+                            }
+                            
+                            for nRecord in nRecords! {
+                                
+                                nRecord["notificationTitle"] = "\(myID!) が〈\(newPlanTitle)〉への参加を求めています" as String
+                                nRecord["notificationContent"] = "\(formatter.string(from: newEstimatedTime)) \(newPlaceName)"
+                                
+                                self.publicDatabase.save(nRecord, completionHandler: {(record, error) in
+                                    
+                                    if let error = error {
+                                        print("通知エラー2: \(error)")
+                                        return
+                                    }
+                                    print("通知レコード更新成功")
+                                })
+                            }
+                        })
+                    }
                 }
             }
             
@@ -1142,6 +1180,44 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         })
                     }
                 })
+                
+                // 日付のフォーマット
+                let formatter = DateFormatter()
+                // 現地仕様で日付の出力
+                formatter.timeStyle = .short
+                formatter.dateStyle = .medium
+                formatter.timeZone = NSTimeZone.local
+                formatter.locale = Locale(identifier: "ja_JP")
+                
+                // 参加候補者に通知
+                for participant in toSavePreparedParticipantIDs {
+                    
+                    let predicate = NSPredicate(format: "destination == %@", argumentArray: [participant])
+                    let query = CKQuery(recordType: "Notifications", predicate: predicate)
+                    
+                    publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(nRecords, error) in
+                        
+                        if let error = error {
+                            print("通知エラー1: \(error)")
+                            return
+                        }
+                        
+                        for nRecord in nRecords! {
+                            
+                            nRecord["notificationTitle"] = "\(myName!) が〈\(editedPlanTitle)〉への参加を求めています" as String
+                            nRecord["notificationContent"] = "\(formatter.string(from: editedEstimatedTime))　\(editedPlaceName)"
+                            
+                            self.publicDatabase.save(nRecord, completionHandler: {(record, error) in
+                                
+                                if let error = error {
+                                    print("通知エラー2: \(error)")
+                                    return
+                                }
+                                print("通知レコード更新成功")
+                            })
+                        }
+                    })
+                }
                 
                 planTable.reloadData()
             }

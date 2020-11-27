@@ -140,6 +140,10 @@ class RequestFriendViewController: UIViewController {
                 
                 // 友だち申請ボタンクリック後
                 else {
+                    
+                    // 相手に通知を送信
+                    self.sendNotification()
+                    
                     // 01~03のうち、NOのところに自分のIDを挿入
                     if self.requestedAccounts[0] == "NO" {
                         self.requestedAccounts[0] = myID!
@@ -188,6 +192,8 @@ class RequestFriendViewController: UIViewController {
             }
         }
     }
+    
+    
     
     func reloadFriendRecord() {
         
@@ -246,5 +252,39 @@ class RequestFriendViewController: UIViewController {
             }
         })
     }
+    
+    
+    
+    func sendNotification() {
+        
+        // 検索条件を作成
+        let predicate = NSPredicate(format: "destination == %@", argumentArray: [friendID!])
+        let query = CKQuery(recordType: "Notifications", predicate: predicate)
+        
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("通知エラー1: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["notificationTitle"] = "\(myName!) から友だち申請がありました" as String
+                record["notificationContent"] = "承認すると予定の参加者に指定できるようになります。友だちになって快適に待ち合わせしよう！" as String
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("通知エラー2: \(error)")
+                        return
+                    }
+                    print("通知レコード更新成功")
+                })
+            }
+        })
+    }
+    
+    
     
 }
