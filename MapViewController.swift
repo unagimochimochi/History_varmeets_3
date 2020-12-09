@@ -95,7 +95,9 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         initMap()
         
-        recordLocation()
+        if let location = self.mapView.userLocation.location {
+            recordLocation(currentLocation: location)
+        }
 
         placeSearchBar.delegate = self
     }
@@ -298,7 +300,9 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations:[CLLocation]) {
         // 待ち合わせ中のみデータベースの位置情報を更新
         if meetingTimer != nil {
-            recordLocation()
+            if let location = locations.first {
+                recordLocation(currentLocation: location)
+            }
         }
     }
     
@@ -524,6 +528,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         self.view.endEditing(true)
     }
     
+    
+    
     @IBAction func tappedFavButton(_ sender: Any) {
         
         // 配列が空のとき（ロングタップでピンを立てたとき）
@@ -685,7 +691,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         }
     }
     
-    func recordLocation() {
+    func recordLocation(currentLocation: CLLocation) {
         
         let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
         let query = CKQuery(recordType: "Accounts", predicate: predicate)
@@ -697,13 +703,13 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 return
             }
             for record in records! {
-                record["currentLocation"] = self.mapView.userLocation.location
+                record["currentLocation"] = currentLocation as CLLocation
                 self.publicDatabase.save(record, completionHandler: {(record, error) in
                     if let error = error {
                         print("レコードの位置情報更新エラー2: \(error)")
                         return
                     }
-                    print("レコードの位置情報更新成功")
+                    print("レコードの位置情報更新成功: \(String(describing: currentLocation))")
                 })
             }
         })

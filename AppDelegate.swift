@@ -10,7 +10,7 @@ import CloudKit
 import UserNotifications
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, CLLocationManagerDelegate {
 
     var window: UIWindow?
 
@@ -65,10 +65,55 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidEnterBackground(_ application: UIApplication) {
         // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
         // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+        
+        if estimatedTimes.isEmpty == false {
+            
+            let calendar = Calendar(identifier: .japanese)
+            
+            for estimatedTime in estimatedTimes {
+                
+                // 通知時刻は予定時刻の1時間前（3600秒前）
+                let notificationTime = Date(timeInterval: -3600, since: estimatedTime)
+                // notificationTime（↑）のComponents
+                let components = calendar.dateComponents([.month, .day, .hour, .minute], from: notificationTime)
+                // 通知に利用するComponents
+                var notificationTimeComponents = DateComponents()
+                
+                notificationTimeComponents.month = components.month
+                notificationTimeComponents.day = components.day
+                notificationTimeComponents.hour = components.hour
+                notificationTimeComponents.minute = components.minute
+                
+                // repeats: false で1回だけ通知
+                let trigger = UNCalendarNotificationTrigger(dateMatching: notificationTimeComponents, repeats: false)
+                
+                // 通知内容
+                let content = UNMutableNotificationContent()
+                content.title = "待ち合わせ時刻の1時間前です"
+                content.body = "一度「地図」タブを開いたあとにアプリをバックグラウンドで起動しておけば、あなたの最新の位置情報を参加者に伝えられます。"
+                content.sound = .default
+                
+                // 通知スタイルを指定
+                let request = UNNotificationRequest(identifier: "\(estimatedTime)", content: content, trigger: trigger)
+                // 通知をセット
+                UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+                
+                if let month = notificationTimeComponents.month,
+                   let day = notificationTimeComponents.day,
+                   let hour = notificationTimeComponents.hour,
+                   let minute = notificationTimeComponents.minute {
+                    
+                    print("通知時刻: \(month)月\(day)日 \(hour)時\(minute)分")
+                }
+            }
+        }
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {
         // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
+        
+        print("通知を削除")
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
@@ -78,7 +123,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationWillTerminate(_ application: UIApplication) {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
     }
-
+    
 }
 
 
