@@ -94,6 +94,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             record["accountID"] = id as String
             record["accountName"] = name as String
             record["password"] = password as String
+            record["currentLocation"] = CLLocation(latitude: 37.3349, longitude: -122.00902)
             record["requestedAccountID_01"] = "NO" as String
             record["requestedAccountID_02"] = "NO" as String
             record["requestedAccountID_03"] = "NO" as String
@@ -167,6 +168,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     @IBAction func becameFriends(sender: UIStoryboardSegue) {
         
         if let requestedVC = sender.source as? RequestedViewController {
+            
+            // 通知の許可を求める
+            requestNotifications()
             
             requestedIDs = requestedVC.requestedIDs
             
@@ -306,6 +310,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     
                     if let error = error {
                         print("予定承認（Plans）エラー1: \(error)")
+                        DispatchQueue.main.async {
+                            self.alert(title: "エラー", message: "予定を承認できませんでした。\n他の参加者と同じタイミングで承認しようとした場合、このエラーが発生することがあります。\n時間をおいて右上の更新ボタンを押すと、再び予定承認可否の画面が出てきます。")
+                            // 承認しようとした予定のindexを取得（要素数 - 1）
+                            let indexOfApprovedPlan = myPlanIDs.count - 1
+                            // 予定を削除（変数・データベース）
+                            self.remove(index: indexOfApprovedPlan, completion: {
+                                // 削除後メインスレッドで処理
+                                DispatchQueue.main.async {
+                                    self.planTable.reloadData()
+                                }
+                            })
+                        }
                         return
                     }
                     
@@ -318,6 +334,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                             
                             if let error = error {
                                 print("予定承認（Plans）エラー2: \(error)")
+                                DispatchQueue.main.async {
+                                    self.alert(title: "エラー", message: "予定を承認できませんでした。\n他の参加者と同じタイミングで承認しようとした場合、このエラーが発生することがあります。\n時間をおいて右上の更新ボタンを押すと、再び予定承認可否の画面が出てきます。")
+                                    // 承認しようとした予定のindexを取得（要素数 - 1）
+                                    let indexOfApprovedPlan = myPlanIDs.count - 1
+                                    // 予定を削除（変数・データベース）
+                                    self.remove(index: indexOfApprovedPlan, completion: {
+                                        // 削除後メインスレッドで処理
+                                        DispatchQueue.main.async {
+                                            self.planTable.reloadData()
+                                        }
+                                    })
+                                }
                                 return
                             }
                             print("予定承認（Plans）成功")
@@ -549,6 +577,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if userDefaults.object(forKey: "myID") != nil {
             myID = userDefaults.string(forKey: "myID")
             print("myID: \(myID!)")
+            firstWork()
+            recordLocation()
         } else {
             self.performSegue(withIdentifier: "toFirstVC", sender: nil)
         }
@@ -570,14 +600,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if let indexPath = planTable.indexPathForSelectedRow {
             print("deselect")
             planTable.deselectRow(at: indexPath, animated: true)
-            
-        } else {
-            
-            if myID != nil {
-                firstWork()
-            }
         }
- 
+        
         // 1秒ごとに処理
         timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(update), userInfo: nil, repeats: true)
         
@@ -607,6 +631,15 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
+    }
+    
+    
+    
+    @IBAction func refresh(_ sender: Any) {
+        
+        if myID != nil {
+            firstWork()
+        }
     }
     
     
@@ -1071,6 +1104,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             // 予定を作成
             if self.addOrEdit == "add" {
                 
+                print("add!")
+                
                 if let newPlanID = myPlanIDs.last,
                    let newPlanTitle = self.planTitles.last,
                    let newEstimatedTime = estimatedTimes.last,
@@ -1480,7 +1515,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             if let error = error {
                 print("予定承認（Accounts）エラー1: \(error)")
                 DispatchQueue.main.async {
-                    self.alert(title: "エラー", message: "予定を承認できませんでした。\n待ち合わせ中の場合、このエラーが発生することがあります。\n時間をおいてもう一度ホーム画面を開くと、再び予定承認可否の画面が出てきます。")
+                    self.alert(title: "エラー", message: "予定を承認できませんでした。\n待ち合わせ中の場合、このエラーが発生することがあります。\n時間をおいて右上の更新ボタンを押すと、再び予定承認可否の画面が出てきます。")
                     self.firstWork()
                 }
                 return
@@ -1496,13 +1531,45 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     if let error = error {
                         print("予定承認（Accounts）エラー2: \(error)")
                         DispatchQueue.main.async {
-                            self.alert(title: "エラー", message: "予定を承認できませんでした。\n待ち合わせ中の場合、このエラーが発生することがあります。\n時間をおいてもう一度ホーム画面を開くと、再び予定承認可否の画面が出てきます。")
+                            self.alert(title: "エラー", message: "予定を承認できませんでした。\n待ち合わせ中の場合、このエラーが発生することがあります。\n時間をおいて右上の更新ボタンを押すと、再び予定承認可否の画面が出てきます。")
                             self.firstWork()
                         }
                         return
                     }
                     print("予定承認（Accounts）成功")
                     completion()
+                })
+            }
+        })
+    }
+    
+    
+    
+    // 位置情報をアメリカにする
+    func recordLocation() {
+        
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        // 検索したレコードの値を更新
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("レコードの位置情報更新エラー1: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["currentLocation"] = CLLocation(latitude: 37.3349, longitude: -122.00902)
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("レコードの位置情報更新エラー2: \(error)")
+                        return
+                    }
+                    print("レコードの位置情報更新成功")
                 })
             }
         })
@@ -1544,6 +1611,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     func firstWork() {
         
         // ------------------------------ ↓ 初期化関連 ------------------------------
+        
+        // 予定関連初期化
+        myPlanIDs.removeAll()
+        self.dateAndTimes.removeAll()
+        estimatedTimes.removeAll()
+        self.planTitles.removeAll()
+        self.participantIDs.removeAll()
+        self.places.removeAll()
+        self.lats.removeAll()
+        self.lons.removeAll()
+        
+        self.planTable.reloadData()
         
         // 友だち申請関連初期化
         if let workingTimer1 = fetchRequestsTimer {

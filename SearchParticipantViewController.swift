@@ -15,6 +15,7 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
     
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
+    var indicator = UIActivityIndicatorView()
     var timer: Timer!
     var timerCount = 0.0
     var fetchingCheck = [Bool]()
@@ -60,20 +61,35 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
+        // indicatorの表示位置
+        indicator.center = view.center
+        // indicatorのスタイル
+        indicator.style = .whiteLarge
+        // indicatorの色
+        indicator.color = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+        // indicatorをviewに追加
+        view.addSubview(indicator)
+        // indicatorを表示 & アニメーション開始
+        indicator.startAnimating()
+        
         // タイマースタート
         timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingFriendInfo), userInfo: nil, repeats: true)
         
         fetchFriends(completion: {
             
             // 名前に初期値（ID）を代入
-            for i in 0...(self.friendIDs.count - 1) {
-                self.friendNames.append(self.friendIDs[i])
-                self.fetchingCheck.append(false)
-            }
-            
-            // 友だちの名前を取得
-            for i in 0...(self.friendIDs.count - 1) {
-                self.fetchFriendInfo(index: i)
+            if self.friendIDs.isEmpty == false {
+                
+                for i in 0...(self.friendIDs.count - 1) {
+                    self.friendNames.append(self.friendIDs[i])
+                    self.fetchingCheck.append(false)
+                }
+                
+                // 友だちの名前を取得
+                for i in 0...(self.friendIDs.count - 1) {
+                    self.fetchFriendInfo(index: i)
+                }
+                
             }
         })
     }
@@ -147,6 +163,9 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
                 workingTimer.invalidate()
             }
             
+            // indicatorを非表示 & アニメーション終了
+            self.indicator.stopAnimating()
+            
             let dialog = UIAlertController(title: "エラー", message: "友だちを取得できませんでした。", preferredStyle: .alert)
             
             // OKボタン
@@ -179,6 +198,9 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
             if let workingTimer = timer {
                 workingTimer.invalidate()
             }
+            
+            // indicatorを非表示 & アニメーション終了
+            self.indicator.stopAnimating()
             
             // UI更新
             friendsTableView.reloadData()

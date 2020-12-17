@@ -72,7 +72,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         // 詳細ビューの予定を追加ボタン
         addPlanButtonD.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
         addPlanButtonD.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
-        addPlanButtonD.backgroundColor = .white
+        addPlanButtonD.backgroundColor = .clear
         addPlanButtonD.layer.borderColor = UIColor.orange.cgColor
         addPlanButtonD.layer.borderWidth = 1
         addPlanButtonD.layer.masksToBounds = true
@@ -95,10 +95,6 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         initMap()
         
-        if let location = self.mapView.userLocation.location {
-            recordLocation(currentLocation: location)
-        }
-
         placeSearchBar.delegate = self
     }
     
@@ -408,7 +404,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             else {
                 addFavButton.setTitle("お気に入り登録", for: .normal)
                 addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-                addFavButton.backgroundColor = .white
+                addFavButton.backgroundColor = .clear
                 addFavButton.layer.borderColor = UIColor.orange.cgColor
                 addFavButton.layer.borderWidth = 1
             }
@@ -443,7 +439,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 else {
                     addFavButton.setTitle("お気に入り登録", for: .normal)
                     addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-                    addFavButton.backgroundColor = .white
+                    addFavButton.backgroundColor = .clear
                     addFavButton.layer.borderColor = UIColor.orange.cgColor
                     addFavButton.layer.borderWidth = 1
                 }
@@ -560,7 +556,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                     // ボタンの見た目をスイッチ
                     addFavButton.setTitle("お気に入り登録", for: .normal)
                     addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-                    addFavButton.backgroundColor = .white
+                    addFavButton.backgroundColor = .clear
                     addFavButton.layer.borderColor = UIColor.orange.cgColor
                     addFavButton.layer.borderWidth = 1
                     
@@ -642,7 +638,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                         // ボタンの見た目をスイッチ
                         addFavButton.setTitle("お気に入り登録", for: .normal)
                         addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-                        addFavButton.backgroundColor = .white
+                        addFavButton.backgroundColor = .clear
                         addFavButton.layer.borderColor = UIColor.orange.cgColor
                         addFavButton.layer.borderWidth = 1
                         

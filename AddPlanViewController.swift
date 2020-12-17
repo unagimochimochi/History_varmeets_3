@@ -83,6 +83,11 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         if let sourceVC = sender.source as? SearchParticipantViewController {
             
+            // すでに選択済みだった際に重複してしまうため取り除く
+            everyoneIDsExceptAuthor.removeAll()
+            everyoneNamesExceptAuthor.removeAll()
+            participantIDs.removeAll()
+            
             // 予定IDがあるとき（編集時）
             if let planID = sourceVC.planID {
                 self.planID = planID
@@ -361,11 +366,6 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
                 searchParticipantVC.lat = self.lat
                 searchParticipantVC.lon = self.lon
                 
-                // すでに選択済みだった際に重複してしまうため取り除く
-                everyoneIDsExceptAuthor.removeAll()
-                everyoneNamesExceptAuthor.removeAll()
-                participantIDs.removeAll()
-                
                 // 既存の予定作成者・参加者・参加予定者
                 var everyoneIDs = existingParticipantIDs
                 for existingPreparedParticipantID in existingPreparedParticipantIDs {
@@ -380,6 +380,7 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
             return
         }
         self.planTitle = self.planTitleTextField.text!
+        self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
     }
     
 }

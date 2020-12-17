@@ -6,14 +6,13 @@
 //
 
 import UIKit
+import CoreLocation
 import MapKit
 
 class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
     
     @IBOutlet weak var placeSearchBar: UISearchBar!
     @IBOutlet weak var resultsTableView: UITableView!
-    
-    let geocoder = CLGeocoder()
     
     var place: String?
     var lat: String?
@@ -36,7 +35,6 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         super.viewDidLoad()
         
         placeSearchBar.delegate = self
-        print(dateAndTime ?? "変数〈dateAndTime〉はnilです")
     }
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
@@ -46,7 +44,9 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         latArray.removeAll()
         lonArray.removeAll()
         
-        resultsTableView.reloadData()
+        if placeArray.count == addressArray.count {
+            resultsTableView.reloadData()
+        }
         
         // 検索条件を作成
         let request = MKLocalSearch.Request()
@@ -62,12 +62,17 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         // キーボードをとじる
         self.view.endEditing(true)
+        
+        if placeArray.count == addressArray.count {
+            resultsTableView.reloadData()
+        }
     }
     
     // start(completionHandler:)の引数
     func LocalSearchCompHandler(response: MKLocalSearch.Response?, error: Error?) -> Void {
         // 検索がヒットしたとき
         if let response = response {
+            print("\(response.mapItems.count)個ヒット")
             for searchLocation in (response.mapItems) {
                 if error == nil {
                     let place = searchLocation.placemark.name
@@ -81,23 +86,50 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
                         lonArray.append(lonNum.description)
                     }
                     
-                    guard let administrativeArea = searchLocation.placemark.administrativeArea, // 県
-                        let locality = searchLocation.placemark.locality, // 市区町村
-                        let throughfare = searchLocation.placemark.thoroughfare, // 丁目を含む地名
-                        let subThoroughfare = searchLocation.placemark.subThoroughfare // 番地
-                        else {
-                            return
+                    if let administrativeArea = searchLocation.placemark.administrativeArea, // 県
+                       let locality = searchLocation.placemark.locality, // 市区町村
+                       let throughfare = searchLocation.placemark.thoroughfare, // 丁目を含む地名
+                       let subThoroughfare = searchLocation.placemark.subThoroughfare { // 番地
+                        // 配列に住所を追加
+                        addressArray.append(administrativeArea + locality + throughfare + subThoroughfare)
+                        // UI更新
+                        if self.placeArray.count == self.addressArray.count {
+                            self.resultsTableView.reloadData()
+                        }
                     }
                     
-                    // 配列に住所を追加
-                    addressArray.append(administrativeArea + locality + throughfare + subThoroughfare)
+                    // MapItemから住所を取得できない場合、緯度経度から取得
+                    else {
+                        
+                        let geocoder = CLGeocoder()
+                        let location = CLLocation(latitude: latNum, longitude: lonNum)
+                        
+                        geocoder.reverseGeocodeLocation(location, preferredLocale: nil, completionHandler: {(placemarks, error) in
+                            
+                            guard let placemark = placemarks?.first, error == nil,
+                                  let administrativeArea = placemark.administrativeArea, //県
+                                  let locality = placemark.locality, // 市区町村
+                                  let throughfare = placemark.thoroughfare, // 丁目を含む地名
+                                  let subThoroughfare = placemark.subThoroughfare // 番地
+                            else {
+                                self.addressArray.append("住所を取得できません")
+                                return
+                            }
+                            // 配列に住所を追加
+                            self.addressArray.append(administrativeArea + locality + throughfare + subThoroughfare)
+                            // メインスレッドでUI更新
+                            DispatchQueue.main.async {
+                                if self.placeArray.count == self.addressArray.count {
+                                    self.resultsTableView.reloadData()
+                                }
+                            }
+                        })
+                    }
                     
                 } else {
                     print("error")
                 }
             }
-            
-            resultsTableView.reloadData()
         }
         
         // 検索がヒットしなかったとき
@@ -131,7 +163,11 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         let cell = tableView.dequeueReusableCell(withIdentifier: "ResultCell", for:indexPath)
         cell.textLabel?.text = placeArray[indexPath.row]
         
-        cell.detailTextLabel?.textColor = UIColor.gray
+        if #available(iOS 13.0, *) {
+            cell.detailTextLabel?.textColor = .placeholderText
+        } else {
+            cell.detailTextLabel?.textColor = .gray
+        }
         cell.detailTextLabel?.text = addressArray[indexPath.row]
         
         return cell

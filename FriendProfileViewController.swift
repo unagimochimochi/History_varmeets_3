@@ -31,7 +31,11 @@ class FriendProfileViewController: UIViewController{
         
         bioLabel.text = receiveBio
         if receiveBio != "自己紹介が未入力です" {
-            bioLabel.textColor = .black
+            if #available(iOS 13.0, *) {
+                bioLabel.textColor = .label
+            } else {
+                bioLabel.textColor = .black
+            }
         }
         
         self.navigationItem.title = receiveName

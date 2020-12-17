@@ -85,7 +85,7 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
         // 予定を追加ボタン
         addPlanButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
         addPlanButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
-        addPlanButton.backgroundColor = .white
+        addPlanButton.backgroundColor = .clear
         addPlanButton.layer.borderColor = UIColor.orange.cgColor
         addPlanButton.layer.borderWidth = 1
         addPlanButton.layer.masksToBounds = true
@@ -139,7 +139,7 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
                 // ボタンの見た目をスイッチ
                 favButton.setTitle("お気に入り登録", for: .normal)
                 favButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-                favButton.backgroundColor = .white
+                favButton.backgroundColor = .clear
                 favButton.layer.borderColor = UIColor.orange.cgColor
                 favButton.layer.borderWidth = 1
                 

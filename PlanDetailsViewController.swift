@@ -321,14 +321,16 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
                 workingTimer.invalidate()
             }
             
-            // indicatorを非表示 & アニメーション終了
-            self.indicator.stopAnimating()
-            
-            let dialog = UIAlertController(title: "エラー", message: "予定を取得できませんでした。", preferredStyle: .alert)
-            // OKボタン
-            dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-            // ダイアログを表示
-            dialog.present(dialog, animated: true, completion: nil)
+            DispatchQueue.main.async {
+                // indicatorを非表示 & アニメーション終了
+                self.indicator.stopAnimating()
+                
+                let dialog = UIAlertController(title: "エラー", message: "予定を取得できませんでした。", preferredStyle: .alert)
+                // OKボタン
+                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                // ダイアログを表示
+                dialog.present(dialog, animated: true, completion: nil)
+            }
         }
         
         if fetchParticipantSuccess.isEmpty == false, fetchParticipantSuccess.contains(false) == false {

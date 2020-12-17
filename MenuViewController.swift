@@ -30,6 +30,7 @@ class MenuViewController: UIViewController {
     var fetchingBioTimer: Timer!
     var fetchingBioCheck = 0
     
+    @IBOutlet weak var currentLocationLabel: UILabel!
     @IBOutlet weak var versionLabel: UILabel!
     
     
@@ -46,7 +47,7 @@ class MenuViewController: UIViewController {
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as! String
         versionLabel.text = "Version \(version) (\(build))"
         
-        fetchMyBio()
+        fetchMyDetails()
         
         // タイマースタート
         fetchingBioTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingBio), userInfo: nil, repeats: true)
@@ -134,6 +135,17 @@ class MenuViewController: UIViewController {
     }
     
     
+    // SafariでWebサイトを開く
+    @IBAction func openWebsite(_ sender: Any) {
+        
+        let url = URL(string: "https://www.varmeets.com/")!
+        
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        }
+    }
+    
+    
     
     // Safariで使用許諾契約を開く
     @IBAction func openEULA(_ sender: Any) {
@@ -159,14 +171,14 @@ class MenuViewController: UIViewController {
 
     
     
-    func fetchMyBio() {
+    func fetchMyDetails() {
         
         let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
             if let error = error {
-                print("Bio取得エラー: \(error)")
+                print("情報取得エラー: \(error)")
                 return
             }
             
@@ -176,6 +188,23 @@ class MenuViewController: UIViewController {
             } else {
                 print("クラウドのBioが空")
                 self.fetchingBioCheck = 2
+            }
+            
+            if let location = record?.value(forKey: "currentLocation") as? CLLocation {
+                
+                let geocoder = CLGeocoder()
+                
+                geocoder.reverseGeocodeLocation(location, preferredLocale: nil, completionHandler: {(placemarks, error) in
+                    
+                    guard let placemark = placemarks?.first, error == nil,
+                          let country = placemark.country, // 国
+                          let administrativeArea = placemark.administrativeArea, // 県
+                          let locality = placemark.locality // 市区町村
+                    else {
+                        return
+                    }
+                    self.currentLocationLabel.text = "現在［\(country), \(administrativeArea + locality)］にいることになっています。"
+                })
             }
         })
     }
