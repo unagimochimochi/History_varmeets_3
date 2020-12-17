@@ -124,7 +124,19 @@ class MenuViewController: UIViewController {
         
         // 実行ボタン
         let action = UIAlertAction(title: "実行", style: .default, handler: { action in
-            self.reloadMyLocation()
+            
+            let randomInt = Int.random(in: 0...2)
+            
+            if randomInt == 0 {
+                let applePark = CLLocation(latitude: 37.3349, longitude: -122.00902)
+                self.reloadMyLocation(location: applePark)
+            } else if randomInt == 1 {
+                let statueOfLiberty = CLLocation(latitude: 40.6907941, longitude: -74.0459015)
+                self.reloadMyLocation(location: statueOfLiberty)
+            } else {
+                let grandCanyon = CLLocation(latitude: 36.2368592, longitude: -112.1914682)
+                self.reloadMyLocation(location: grandCanyon)
+            }
         })
         
         // Actionを追加
@@ -246,7 +258,7 @@ class MenuViewController: UIViewController {
     
     
     
-    func reloadMyLocation() {
+    func reloadMyLocation(location: CLLocation) {
         
         let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
         let query = CKQuery(recordType: "Accounts", predicate: predicate)
@@ -260,7 +272,7 @@ class MenuViewController: UIViewController {
             
             for record in records! {
                 
-                record["currentLocation"] = CLLocation(latitude: 40.689283, longitude: -74.044368)
+                record["currentLocation"] = location as CLLocation
                 
                 self.publicDatabase.save(record, completionHandler: {(record, error) in
                     

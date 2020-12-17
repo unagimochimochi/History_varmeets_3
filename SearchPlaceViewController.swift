@@ -164,7 +164,7 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         cell.textLabel?.text = placeArray[indexPath.row]
         
         if #available(iOS 13.0, *) {
-            cell.detailTextLabel?.textColor = .placeholderText
+            cell.detailTextLabel?.textColor = .secondaryLabel
         } else {
             cell.detailTextLabel?.textColor = .gray
         }

@@ -575,11 +575,27 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         super.viewDidLoad()
         
         if userDefaults.object(forKey: "myID") != nil {
+            
             myID = userDefaults.string(forKey: "myID")
             print("myID: \(myID!)")
+            
             firstWork()
-            recordLocation()
-        } else {
+            
+            let randomInt = Int.random(in: 0...2)
+            
+            if randomInt == 0 {
+                let applePark = CLLocation(latitude: 37.3349, longitude: -122.00902)
+                recordLocation(location: applePark)
+            } else if randomInt == 1 {
+                let statueOfLiberty = CLLocation(latitude: 40.6907941, longitude: -74.0459015)
+                recordLocation(location: statueOfLiberty)
+            } else {
+                let grandCanyon = CLLocation(latitude: 36.2368592, longitude: -112.1914682)
+                recordLocation(location: grandCanyon)
+            }
+        }
+        
+        else {
             self.performSegue(withIdentifier: "toFirstVC", sender: nil)
         }
 
@@ -1546,7 +1562,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     
     // 位置情報をアメリカにする
-    func recordLocation() {
+    func recordLocation(location: CLLocation) {
         
         let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
         let query = CKQuery(recordType: "Accounts", predicate: predicate)
@@ -1561,7 +1577,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             for record in records! {
                 
-                record["currentLocation"] = CLLocation(latitude: 37.3349, longitude: -122.00902)
+                record["currentLocation"] = location as CLLocation
                 
                 self.publicDatabase.save(record, completionHandler: {(record, error) in
                     
