@@ -24,8 +24,10 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
     
     var participantIDs = [String]()
     var participantNames = [String]()
+    var participantBios = [String]()
     var preparedParticipantIDs = [String]()
     var preparedParticipantNames = [String]()
+    var preparedParticipantBios = [String]()
     
     var fetchParticipantSuccess = [Bool]()
     var fetchPreparedParticipantSuccess = [Bool]()
@@ -74,12 +76,13 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             completion2: {
                 // 参加者がいるとき
                 if self.participantIDs.isEmpty == false {
-                    // 名前に初期値（ID）を代入
+                    // 名前・Bioに初期値を代入
                     for i in 0...(self.participantIDs.count - 1) {
                         self.participantNames.append(self.participantIDs[i])
+                        self.participantBios.append("自己紹介が未入力です")
                         self.fetchParticipantSuccess.append(false)
                     }
-                    // 名前を取得
+                    // 名前・Bioを取得
                     for i in 0...(self.participantIDs.count - 1) {
                         self.fetchParticipantInfo(index: i)
                     }
@@ -94,12 +97,13 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             completion3: {
                 // 参加候補者がいるとき
                 if self.preparedParticipantIDs.isEmpty == false {
-                    // 名前に初期値（ID）を代入
+                    // 名前・Bioに初期値を代入
                     for i in 0...(self.preparedParticipantIDs.count - 1) {
                         self.preparedParticipantNames.append(self.preparedParticipantIDs[i])
+                        self.preparedParticipantBios.append("自己紹介が未入力です")
                         self.fetchPreparedParticipantSuccess.append(false)
                     }
-                    // 名前を取得
+                    // 名前・Bioを取得
                     for i in 0...(self.preparedParticipantIDs.count - 1) {
                         self.fetchPreparedParticipantInfo(index: i)
                     }
@@ -302,10 +306,16 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
     
     
     // Cell の高さを68にする
-    func tableView(_ table: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 68.0
     }
 
+    
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
     
     
     @objc func fetchingPlan() {
@@ -321,16 +331,8 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
                 workingTimer.invalidate()
             }
             
-            DispatchQueue.main.async {
-                // indicatorを非表示 & アニメーション終了
-                self.indicator.stopAnimating()
-                
-                let dialog = UIAlertController(title: "エラー", message: "予定を取得できませんでした。", preferredStyle: .alert)
-                // OKボタン
-                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-                // ダイアログを表示
-                dialog.present(dialog, animated: true, completion: nil)
-            }
+            // indicatorを非表示 & アニメーション終了
+            self.indicator.stopAnimating()
         }
         
         if fetchParticipantSuccess.isEmpty == false, fetchParticipantSuccess.contains(false) == false {
@@ -449,6 +451,12 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
                 self.participantNames[index] = name
                 self.fetchParticipantSuccess[index] = true
             }
+            
+            if let bio = record?.value(forKey: "accountBio") as? String {
+                self.participantBios[index] = bio
+            } else {
+                self.participantBios[index] = "自己紹介が未入力です"
+            }
         })
     }
     
@@ -469,6 +477,12 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             if let name = record?.value(forKey: "accountName") as? String {
                 self.preparedParticipantNames[index] = name
                 self.fetchPreparedParticipantSuccess[index] = true
+            }
+            
+            if let bio = record?.value(forKey: "accountBio") as? String {
+                self.preparedParticipantBios[index] = bio
+            } else {
+                self.preparedParticipantBios[index] = "自己紹介が未入力です"
             }
         })
     }
@@ -507,6 +521,23 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
                 everyoneNamesExceptAuthor.append(preparedParticipantName)
             }
             addPlanVC.everyoneNamesExceptAuthor = everyoneNamesExceptAuthor
+        }
+        
+        else if identifier == "PlanDetailsVCtoNC" {
+            let nc = segue.destination as! UINavigationController
+            let userListVC = nc.viewControllers[0] as! UserListViewController
+            
+            if self.planDetailsTableView.indexPathForSelectedRow?.row == 1 {
+                userListVC.userIDs = self.participantIDs
+                userListVC.userNames = self.participantNames
+                userListVC.userBios = self.participantBios
+            }
+            
+            else if self.planDetailsTableView.indexPathForSelectedRow?.row == 2 {
+                userListVC.userIDs = self.preparedParticipantIDs
+                userListVC.userNames = self.preparedParticipantNames
+                userListVC.userBios = self.preparedParticipantBios
+            }
         }
 
         else if identifier == "toPlaceVC" {
