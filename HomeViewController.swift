@@ -60,6 +60,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var fetchPlansCheck = [Bool]()
     var noPlansOnDatabase: Bool?
     
+    var existingIDs = [String]()
     var firstLaunch = false
     
     @IBOutlet weak var planTable: UITableView!
@@ -80,85 +81,53 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             let name = firstVC.name,
             let password = firstVC.password {
             
-            myID = id
-            myName = name
-            
-            userDefaults.set(id, forKey: "myID")
-            userDefaults.set(name, forKey: "myName")
-            
-            // ------------------------------ ↓ アカウント作成 ------------------------------
-            
-            let recordID = CKRecord.ID(recordName: "accountID-\(id)")
-            let record = CKRecord(recordType: "Accounts", recordID: recordID)
-            
-            record["accountID"] = id as String
-            record["accountName"] = name as String
-            record["password"] = password as String
-            record["currentLocation"] = CLLocation(latitude: 37.3349, longitude: -122.00902)
-            record["requestedAccountID_01"] = "NO" as String
-            record["requestedAccountID_02"] = "NO" as String
-            record["requestedAccountID_03"] = "NO" as String
-            record["favPlaceNames"] = ["東京タワー（お気に入りサンプル）"] as [String]
-            record["favPlaceLocations"] = [CLLocation(latitude: 35.658584, longitude: 139.7454316)] as [CLLocation]
-            
-            // レコードを作成
-            publicDatabase.save(record, completionHandler: {(record, error) in
-                
-                if let error = error {
-                    print("新規レコード保存エラー: \(error)")
-                    return
-                }
-                print("アカウント作成成功")
-            })
-            
-            // ------------------------------ ↓ 通知のレコード作成 ------------------------------
-            
-            let nRecordID = CKRecord.ID(recordName: "notification-\(id)")
-            let nRecord = CKRecord(recordType: "Notifications", recordID: nRecordID)
-            
-            nRecord["destination"] = id as String
-            
-            // レコードを作成
-            publicDatabase.save(nRecord, completionHandler: {(record, error) in
-                
-                if let error = error {
-                    print("新規レコード（通知）保存エラー: \(error)")
-                    return
-                }
-                print("新規レコード（通知）作成成功")
-            })
-            
-            // ------------------------------ ↓ アカウントリストにIDを追加 ------------------------------
-            
-            var existingIDs = firstVC.existingIDs
-            
-            // 検索条件を作成
-            let predicate = NSPredicate(format: "toSearch IN %@", ["all-varmeetsIDs"])
-            let query = CKQuery(recordType: "AccountsList", predicate: predicate)
-            
-            existingIDs.append("accountID-\(id)")
-            
-            // 検索したレコードの値を更新
-            publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
-                
-                if let error = error {
-                    print("アカウントリスト追加エラー1: \(error)")
-                    return
-                }
-                
-                for record in records! {
+            // アカウントのレコード作成
+            self.createAccountRecord(id: id, name: name, password: password, completion: {
+                // 通知のレコード作成
+                self.createNotificationRecord(id: id, completion: {
                     
-                    record["accounts"] = existingIDs as [String]
+                    myID = id
+                    myName = name
+                    userDefaults.set(myID, forKey: "myID")
+                    userDefaults.set(myName, forKey: "myName")
                     
-                    self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    // もう一度登録されているIDを取得（前画面入力中に新たなIDが追加されているかもしれないため）
+                    self.fetchExistingIDs(completion: {
+                        // 取得し終えたら自分のIDを追加
+                        self.existingIDs.append("accountID-\(id)")
                         
-                        if let error = error {
-                            print("アカウントリスト追加エラー2: \(error)")
-                            return
-                        }
+                        let predicate = NSPredicate(format: "toSearch IN %@", ["all-varmeetsIDs"])
+                        let query = CKQuery(recordType: "AccountsList", predicate: predicate)
+                        
+                        self.publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                            
+                            if let error = error {
+                                print("アカウントリスト追加エラー1: \(error)")
+                                DispatchQueue.main.async {
+                                    self.alert(title: "微妙にエラー", message: "アカウントの作成は成功しましたが、varmeets ID 一覧に \(id) を追加できませんでした。\nお手数ですが、Webサイトのお問い合わせフォームよりご連絡していただけると大変助かります🥺\nあなたの利用に支障はありませんので、任意です！")
+                                }
+                                return
+                            }
+                            
+                            for record in records! {
+                                
+                                record["accounts"] = self.existingIDs as [String]
+                                
+                                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                                    
+                                    if let error = error {
+                                        print("アカウントリスト追加エラー2: \(error)")
+                                        DispatchQueue.main.async {
+                                            self.alert(title: "微妙にエラー", message: "アカウントの作成は成功しましたが、varmeets ID 一覧に \(id) を追加できませんでした。\nお手数ですが、Webサイトのお問い合わせフォームよりご連絡していただけると大変助かります🥺\nあなたの利用に支障はありませんので、任意です！")
+                                        }
+                                        return
+                                    }
+                                })
+                            }
+                            print("アカウントリスト追加成功")
+                        })
                     })
-                }
-                print("アカウントリスト追加成功")
+                })
             })
         }
     }
@@ -1885,6 +1854,110 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     print("データベースの予定ID削除成功")
                     completion()
                 })
+            }
+        })
+    }
+    
+    
+    
+    // アカウントのレコード作成
+    func createAccountRecord(id: String, name: String, password: String, completion: @escaping () -> ()) {
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(id)")
+        let record = CKRecord(recordType: "Accounts", recordID: recordID)
+        
+        record["accountID"] = id as String
+        record["accountName"] = name as String
+        record["password"] = password as String
+        record["currentLocation"] = CLLocation(latitude: 37.3349, longitude: -122.00902)
+        record["requestedAccountID_01"] = "NO" as String
+        record["requestedAccountID_02"] = "NO" as String
+        record["requestedAccountID_03"] = "NO" as String
+        record["favPlaceNames"] = ["東京タワー（お気に入りサンプル）"] as [String]
+        record["favPlaceLocations"] = [CLLocation(latitude: 35.658584, longitude: 139.7454316)] as [CLLocation]
+        
+        // レコードを作成
+        publicDatabase.save(record, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("新規レコード保存エラー: \(error)")
+                DispatchQueue.main.async {
+                    self.alert(title: "エラー", message: "申し訳ございませんが、アカウント作成に失敗してしまったようです🥺\nアプリを一旦終了（タスクキル）し、再び起動するともう一度挑戦できます。")
+                }
+                return
+            }
+            print("新規レコード（アカウント）作成成功")
+            completion()
+        })
+    }
+    
+    
+    
+    // 通知のレコード作成
+    func createNotificationRecord(id: String, completion: @escaping () -> ()) {
+        
+        let recordID = CKRecord.ID(recordName: "notification-\(id)")
+        let record = CKRecord(recordType: "Notifications", recordID: recordID)
+        
+        record["destination"] = id as String
+        
+        // レコードを作成
+        publicDatabase.save(record, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("新規レコード（通知）保存エラー: \(error)")
+                
+                DispatchQueue.main.async {
+                    self.alert(title: "エラー", message: "申し訳ございませんが、アカウント作成に失敗してしまったようです🥺\nアプリを一旦終了（タスクキル）し、再び起動するともう一度挑戦できます。")
+                }
+                
+                // アカウントのレコード削除
+                self.deleteAccountRecordInTheCreating(id: id)
+                
+                return
+            }
+            print("新規レコード（通知）作成成功")
+            completion()
+        })
+    }
+    
+    
+    
+    // アカウントのレコード削除（通知レコード作成で失敗したとき）
+    func deleteAccountRecordInTheCreating(id: String) {
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(id)")
+        
+        publicDatabase.delete(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("レコード（アカウント）削除エラー: \(error)")
+                return
+            }
+            print("レコード（アカウント）削除成功")
+        })
+    }
+    
+    
+    
+    // アカウント作成時に登録済みID一覧を取得
+    func fetchExistingIDs(completion: @escaping () -> ()) {
+        
+        let recordID = CKRecord.ID(recordName: "all-varmeetsIDsList")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(existingIDs, error) in
+            
+            if let error = error {
+                print("アカウントリスト取得エラー: \(error)")
+                DispatchQueue.main.async {
+                    self.alert(title: "エラー", message: "申し訳ございませんが、アカウント作成に失敗してしまったようです🥺\nアプリを一旦終了（タスクキル）し、再び起動するともう一度挑戦できます。")
+                }
+                return
+            }
+            
+            if let existingIDs = existingIDs?.value(forKey: "accounts") as? [String] {
+                self.existingIDs = existingIDs
+                completion()
             }
         })
     }

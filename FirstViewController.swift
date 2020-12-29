@@ -285,10 +285,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
             }
             
             if let existingIDs = existingIDs?.value(forKey: "accounts") as? [String] {
-                
-                for existingID in existingIDs {
-                    self.existingIDs.append(existingID)
-                }
+                self.existingIDs = existingIDs
                 print("登録済みID: \(self.existingIDs)")
             }
         })
