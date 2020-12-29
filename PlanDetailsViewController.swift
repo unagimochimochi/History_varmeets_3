@@ -323,8 +323,8 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
         
         timerCount += 0.5
         
-        // 参加者取得に5秒以上かかったとき
-        if timerCount >= 5.0 {
+        // 参加者取得に20秒以上かかったとき
+        if timerCount >= 20.0 {
             
             // タイマーを止める
             if let workingTimer = timer {

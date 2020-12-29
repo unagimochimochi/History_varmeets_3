@@ -50,6 +50,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     var participantLocations = [CLLocation]()
     var participantAnnotations = [MKPointAnnotation]()
     
+    @IBOutlet weak var countdownLabel: UILabel!
+    
     var favLocations = [CLLocation]()    // データベース保存用
     
     
@@ -178,6 +180,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             mapView.removeAnnotation(meetingAnnotation)
             meetingPlace = nil
             meetingLocation = nil
+            
+            countdownLabel.isHidden = true
             
             initMap()
         }
@@ -807,6 +811,26 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                     }, completion: nil)
                 }
             })
+        }
+        
+        // カウントダウンを表示
+        countdownLabel.isHidden = false
+        
+        let now = Date()
+        let calendar = Calendar(identifier: .japanese)
+        let components = calendar.dateComponents([.minute, .second], from: now, to: estimatedTimesSort[0])
+        
+        // まだ予定時刻ではないとき
+        if now < estimatedTimesSort[0] {
+            // 背景をオレンジにする
+            countdownLabel.backgroundColor = UIColor.init(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+            countdownLabel.text = String(format: "%02d:%02d", components.minute!, components.second!)
+        }
+        // 予定時刻を過ぎたとき
+        else {
+            // 背景を赤にする
+            countdownLabel.backgroundColor = UIColor.init(hue: 0.03, saturation: 0.9, brightness: 0.9, alpha: 1.0)
+            countdownLabel.text = "00:00"
         }
     }
     

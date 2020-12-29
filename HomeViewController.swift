@@ -785,9 +785,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         // 削除ボタン
         let delete = UIAlertAction(title: "削除", style: .destructive, handler: { action in
             
-            // カウントダウンを非表示
-            self.hiddenCountdown()
-            
             // 並べ替え用の配列に予定時刻をセット
             estimatedTimesSort = estimatedTimes
             // 並べ替え用の配列で並べ替え
@@ -795,13 +792,29 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             // 一番近い予定のindexを取得
             if let index = estimatedTimes.index(of: estimatedTimesSort[0]) {
+                
+                // indicatorの表示位置
+                self.indicator.center = self.view.center
+                // indicatorのスタイル
+                self.indicator.style = .whiteLarge
+                // indicatorの色
+                self.indicator.color = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+                // indicatorをviewに追加
+                self.view.addSubview(self.indicator)
+                // indicatorを表示 & アニメーション開始
+                self.indicator.startAnimating()
+                
                 // index番目の配列とuserDefaultsを削除
                 self.remove(index: index, completion: {
                     // 削除後メインスレッドで処理
                     DispatchQueue.main.async { [weak self] in
                         guard let `self` = self else { return }
+                        // カウントダウンを非表示
+                        self.hiddenCountdown()
                         // UI更新
                         self.planTable.reloadData()
+                        // indicatorを非表示 & アニメーション終了
+                        self.indicator.stopAnimating()
                     }
                 })
             }
@@ -1848,6 +1861,10 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             if let error = error {
                 print("データベースの予定ID削除エラー1: \(error)")
+                DispatchQueue.main.async {
+                    self.alert(title: "エラー", message: "予定の削除に失敗しました。時間をおいてもう一度お試しください。")
+                    self.indicator.stopAnimating()
+                }
                 return
             }
             
@@ -1859,6 +1876,10 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     
                     if let error = error {
                         print("データベースの予定ID削除エラー2: \(error)")
+                        DispatchQueue.main.async {
+                            self.alert(title: "エラー", message: "予定の削除に失敗しました。時間をおいてもう一度お試しください。")
+                            self.indicator.stopAnimating()
+                        }
                         return
                     }
                     print("データベースの予定ID削除成功")
