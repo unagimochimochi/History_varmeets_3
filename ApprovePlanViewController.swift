@@ -32,6 +32,7 @@ class ApprovePlanViewController: UIViewController, UITableViewDelegate, UITableV
     var timer: Timer!
     var timerCount = 0.0
     
+    @IBOutlet weak var overviewLabel: UILabel!
     @IBOutlet weak var titleLabel: UILabel!
     @IBOutlet weak var approvalLabel: UILabel!
     @IBOutlet weak var rejectLabel: UILabel!
@@ -242,6 +243,7 @@ class ApprovePlanViewController: UIViewController, UITableViewDelegate, UITableV
             }
             
             print("予定取得成功")
+            overviewLabel.text = "\(authorName!) さんが以下の予定への参加を求めています。"
             titleLabel.text = planTitle
             planDetailsTableView.reloadData()
         }
@@ -250,7 +252,7 @@ class ApprovePlanViewController: UIViewController, UITableViewDelegate, UITableV
     func fetchPlanDetails(completion: @escaping () -> ()) {
         
         let recordID = CKRecord.ID(recordName: "planID-\(planID!)")
-        print(planID!)
+        
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
             if let error = error {
