@@ -22,7 +22,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     var dateAndTimes = [String]()
     var planTitles = [String]()
-    var participantIDs = [[String]]()              // 起動時にデータベースから取得
+    var everyoneIDsExceptMe = [[String]]()          // 起動時にデータベースから取得する自分以外の作成者・参加者・参加候補者ID
+    var participantIDs = [[String]]()
+    var preparedParticipantIDs = [[String]]()
     var places = [String]()
     var lons = [String]()
     var lats = [String]()
@@ -243,7 +245,24 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 if let index = everyoneIDsExceptMe.index(of: myID!) {
                     everyoneIDsExceptMe.remove(at: index)
                 }
-                self.participantIDs.append(everyoneIDsExceptMe)
+                // メンバ変数に追加
+                self.everyoneIDsExceptMe.append(everyoneIDsExceptMe)
+                
+                // まずApprovedPlanVC起動時に取得した参加者を代入
+                var participantIDsOfApprovedPlan = approvedPlanVC.participantIDs
+                // 自分のIDを追加
+                participantIDsOfApprovedPlan.append(myID!)
+                // メンバ変数に追加
+                self.participantIDs.append(participantIDsOfApprovedPlan)
+                
+                // まずApprovedPlanVC起動時に取得した参加候補者を代入
+                var preparedParticipantIDsOfApprovedPlan = approvedPlanVC.participantIDs
+                // 自分のIDを抜く
+                if let index = preparedParticipantIDsOfApprovedPlan.index(of: myID!) {
+                    preparedParticipantIDsOfApprovedPlan.remove(at: index)
+                }
+                // メンバ変数に追加
+                self.preparedParticipantIDs.append(preparedParticipantIDsOfApprovedPlan)
                 
                 self.places.append(approvedPlanVC.place!)
                 self.lats.append((approvedPlanVC.location?.coordinate.latitude.description)!)
@@ -379,12 +398,12 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.toSavePreparedParticipantIDs = addPlanVC.participantIDs
             
             if let selectedIndexPath = planTable.indexPathForSelectedRow {
-                participantIDs[selectedIndexPath.row] = addPlanVC.everyoneIDsExceptAuthor
+                self.everyoneIDsExceptMe[selectedIndexPath.row] = addPlanVC.everyoneIDsExceptAuthor
             } else {
-                participantIDs.append(addPlanVC.everyoneIDsExceptAuthor)
+                self.everyoneIDsExceptMe.append(addPlanVC.everyoneIDsExceptAuthor)
             }
             
-            userDefaults.set(participantIDs, forKey: "ParticipantIDs")
+            userDefaults.set(self.everyoneIDsExceptMe, forKey: "everyoneIDsExceptMe")
         }
         
         // 場所
@@ -648,10 +667,10 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         let participantLabel = cell.viewWithTag(4) as! UILabel
         
-        if participantIDs[indexPath.row].count <= 1 {
-            participantLabel.text = self.participantIDs[indexPath.row][0]
+        if self.everyoneIDsExceptMe[indexPath.row].count <= 1 {
+            participantLabel.text = self.everyoneIDsExceptMe[indexPath.row][0]
         } else {
-            participantLabel.text = "\(self.participantIDs[indexPath.row][0]) 他"
+            participantLabel.text = "\(self.everyoneIDsExceptMe[indexPath.row][0]) 他"
         }
         
         let placeLabel = cell.viewWithTag(5) as! UILabel
@@ -671,8 +690,35 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         
         if editingStyle == .delete {
-            remove(index: indexPath.row, completion: {})
-            tableView.deleteRows(at: [indexPath], with: .fade)
+            
+            // indicatorの表示位置
+            self.indicator.center = self.view.center
+            // indicatorのスタイル
+            self.indicator.style = .whiteLarge
+            // indicatorの色
+            self.indicator.color = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+            // indicatorをviewに追加
+            self.view.addSubview(self.indicator)
+            // indicatorを表示 & アニメーション開始
+            self.indicator.startAnimating()
+            
+            // Plansタイプのレコードから自分のIDを削除
+            self.deleteMyIDByPlansRecord(index: indexPath.row, completion: {
+                
+                // index番目の配列とuserDefaultsを削除
+                self.remove(index: indexPath.row, completion: {
+                    // 削除後メインスレッドで処理
+                    DispatchQueue.main.async { [weak self] in
+                        guard let `self` = self else { return }
+                        // カウントダウンを非表示
+                        self.hiddenCountdown()
+                        // セルを削除
+                        tableView.deleteRows(at: [indexPath], with: .fade)
+                        // indicatorを非表示 & アニメーション終了
+                        self.indicator.stopAnimating()
+                    }
+                })
+            })
         }
     }
     
@@ -773,18 +819,22 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 // indicatorを表示 & アニメーション開始
                 self.indicator.startAnimating()
                 
-                // index番目の配列とuserDefaultsを削除
-                self.remove(index: index, completion: {
-                    // 削除後メインスレッドで処理
-                    DispatchQueue.main.async { [weak self] in
-                        guard let `self` = self else { return }
-                        // カウントダウンを非表示
-                        self.hiddenCountdown()
-                        // UI更新
-                        self.planTable.reloadData()
-                        // indicatorを非表示 & アニメーション終了
-                        self.indicator.stopAnimating()
-                    }
+                // Plansタイプのレコードから自分のIDを削除
+                self.deleteMyIDByPlansRecord(index: index, completion: {
+                    
+                    // index番目の配列とuserDefaultsを削除
+                    self.remove(index: index, completion: {
+                        // 削除後メインスレッドで処理
+                        DispatchQueue.main.async { [weak self] in
+                            guard let `self` = self else { return }
+                            // カウントダウンを非表示
+                            self.hiddenCountdown()
+                            // UI更新
+                            self.planTable.reloadData()
+                            // indicatorを非表示 & アニメーション終了
+                            self.indicator.stopAnimating()
+                        }
+                    })
                 })
             }
         })
@@ -1000,18 +1050,20 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             if let participantIDs = record?.value(forKey: "participantIDs") as? [String] {
                 for participantID in participantIDs {
                     everyone.append(participantID)
+                    self.participantIDs[index].append(participantID)
                 }
             }
             
             if let preparedParticipantIDs = record?.value(forKey: "preparedParticipantIDs") as? [String] {
                 for preparedParticipantID in preparedParticipantIDs {
                     everyone.append(preparedParticipantID)
+                    self.preparedParticipantIDs[index].append(preparedParticipantID)
                 }
             }
             
             if let myIndex = everyone.index(of: myID!) {
                 everyone.remove(at: myIndex)
-                self.participantIDs[index] = everyone
+                self.everyoneIDsExceptMe[index] = everyone
             }
             
             if let place = record?.value(forKey: "placeName") as? String {
@@ -1549,7 +1601,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
         let query = CKQuery(recordType: "Accounts", predicate: predicate)
         
-        // 検索したレコードの値を更新
         publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
             
             if let error = error {
@@ -1568,6 +1619,44 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         return
                     }
                     print("レコードの位置情報更新成功")
+                })
+            }
+        })
+    }
+    
+    
+    
+    // 予定を削除したとき、Plansタイプから自分のIDを削除
+    func deleteMyIDByPlansRecord(index: Int, completion: @escaping () -> ()) {
+        
+        var participantIDsOfRemovedPlan = self.participantIDs[index]
+        
+        if let i = participantIDsOfRemovedPlan.index(of: myID!) {
+            participantIDsOfRemovedPlan.remove(at: i)
+        }
+        
+        let predicate = NSPredicate(format: "planID == %@", argumentArray: [myPlanIDs[index]])
+        let query = CKQuery(recordType: "Plans", predicate: predicate)
+        
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("Plansタイプのレコードから自分のID削除エラー: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["participantIDs"] = participantIDsOfRemovedPlan as [String]
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("Plansタイプのレコードから自分のID削除エラー: \(error)")
+                        return
+                    }
+                    print("Plansタイプのレコードから自分のID削除成功")
+                    completion()
                 })
             }
         })
@@ -1615,7 +1704,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         self.dateAndTimes.removeAll()
         estimatedTimes.removeAll()
         self.planTitles.removeAll()
-        self.participantIDs.removeAll()
+        self.everyoneIDsExceptMe.removeAll()
         self.places.removeAll()
         self.lats.removeAll()
         self.lons.removeAll()
@@ -1675,7 +1764,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.dateAndTimes.removeAll()
             estimatedTimes.removeAll()
             self.planTitles.removeAll()
-            self.participantIDs.removeAll()
+            self.everyoneIDsExceptMe.removeAll()
             self.places.removeAll()
             self.lats.removeAll()
             self.lons.removeAll()
@@ -1686,7 +1775,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     self.dateAndTimes.append("日時")
                     estimatedTimes.append(Date(timeIntervalSinceNow: 7200.0))   // 2時間（7200秒）後
                     self.planTitles.append("予定サンプル")
+                    self.everyoneIDsExceptMe.append([String]())
                     self.participantIDs.append([String]())
+                    self.preparedParticipantIDs.append([String]())
                     self.places.append("場所")
                     self.lats.append("緯度")
                     self.lons.append("経度")
@@ -1709,7 +1800,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
                         userDefaults.set(estimatedTimes, forKey: "EstimatedTimes")
                         userDefaults.set(self.planTitles, forKey: "PlanTitles")
-                        userDefaults.set(self.participantIDs, forKey: "ParticipantIDs")
+                        userDefaults.set(self.everyoneIDsExceptMe, forKey: "everyoneIDsExceptMe")
                         userDefaults.set(self.places, forKey: "Places")
                         userDefaults.set(self.lats, forKey: "lats")
                         userDefaults.set(self.lons, forKey: "lons")
@@ -1763,8 +1854,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.planTitles = userDefaults.stringArray(forKey: "PlanTitles")!
         }
         
-        if userDefaults.object(forKey: "ParticipantIDs") != nil {
-            self.participantIDs = userDefaults.array(forKey: "ParticipantIDs") as! [[String]]
+        if userDefaults.object(forKey: "everyoneIDsExceptMe") != nil {
+            self.everyoneIDsExceptMe = userDefaults.array(forKey: "everyoneIDsExceptMe") as! [[String]]
         }
         
         if userDefaults.object(forKey: "Places") != nil {
@@ -1809,8 +1900,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         self.planTitles.remove(at: index)
         userDefaults.set(self.planTitles, forKey: "PlanTitles")
         
-        self.participantIDs.remove(at: index)
-        userDefaults.set(self.participantIDs, forKey: "ParticipantIDs")
+        self.everyoneIDsExceptMe.remove(at: index)
+        userDefaults.set(self.everyoneIDsExceptMe, forKey: "everyoneIDsExceptMe")
         
         self.places.remove(at: index)
         userDefaults.set(self.places, forKey: "Places")
@@ -1840,6 +1931,19 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             for record in records! {
                 
                 record["planIDs"] = myPlanIDs as [String]
+                
+                let randomInt = Int.random(in: 0...2)
+                
+                if randomInt == 0 {
+                    let applePark = CLLocation(latitude: 37.3349, longitude: -122.00902)
+                    record["currentLocation"] = applePark as CLLocation
+                } else if randomInt == 1 {
+                    let statueOfLiberty = CLLocation(latitude: 40.6907941, longitude: -74.0459015)
+                    record["currentLocation"] = statueOfLiberty as CLLocation
+                } else {
+                    let grandCanyon = CLLocation(latitude: 36.2368592, longitude: -112.1914682)
+                    record["currentLocation"] = grandCanyon as CLLocation
+                }
                 
                 self.publicDatabase.save(record, completionHandler: {(record, error) in
                     
