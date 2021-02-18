@@ -667,7 +667,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         let participantLabel = cell.viewWithTag(4) as! UILabel
         
-        if self.everyoneIDsExceptMe[indexPath.row].count <= 1 {
+        if self.everyoneIDsExceptMe[indexPath.row].count == 0 {
+            participantLabel.text = "参加者なし"
+        } else if self.everyoneIDsExceptMe[indexPath.row].count == 1 {
             participantLabel.text = self.everyoneIDsExceptMe[indexPath.row][0]
         } else {
             participantLabel.text = "\(self.everyoneIDsExceptMe[indexPath.row][0]) 他"
