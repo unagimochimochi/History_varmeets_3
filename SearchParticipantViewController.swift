@@ -156,8 +156,8 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
         
         timerCount += 0.5
         
-        // 友だちの名前取得に5秒以上かかったとき
-        if timerCount >= 5.0 {
+        // 友だちの名前取得に20秒以上かかったとき
+        if timerCount >= 20.0 {
             
             if let workingTimer = timer {
                 workingTimer.invalidate()

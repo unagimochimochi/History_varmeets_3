@@ -392,14 +392,17 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             userDefaults.set(planTitles, forKey: "PlanTitles")
         }
         
-        // 参加者（参加候補者です！ややこしい）
+        // 参加者・参加候補者
         if addPlanVC.everyoneNamesExceptAuthor.isEmpty == false {
             
             self.toSavePreparedParticipantIDs = addPlanVC.participantIDs
             
             if let selectedIndexPath = planTable.indexPathForSelectedRow {
+                self.preparedParticipantIDs[selectedIndexPath.row] = addPlanVC.participantIDs
                 self.everyoneIDsExceptMe[selectedIndexPath.row] = addPlanVC.everyoneIDsExceptAuthor
             } else {
+                self.participantIDs.append([String]())
+                self.preparedParticipantIDs.append(addPlanVC.participantIDs)
                 self.everyoneIDsExceptMe.append(addPlanVC.everyoneIDsExceptAuthor)
             }
             
@@ -1088,8 +1091,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         fetchPlansTimerCount += 0.5
         
-        // データベースの予定取得に5秒以上かかったとき
-        if fetchPlansTimerCount >= 5.0 {
+        // データベースの予定取得に20秒以上かかったとき
+        if fetchPlansTimerCount >= 20.0 {
             print("Failed fetching plans!")
             
             // タイマーを止める
