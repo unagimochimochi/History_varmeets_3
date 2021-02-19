@@ -18,6 +18,11 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
     var lat: String?
     var lon: String?
     
+    var searchedFavPlaceArray = [String]()
+    var searchedFavAddressArray = [String]()
+    var searchedFavLatArray = [Double]()
+    var searchedFavLonArray = [Double]()
+    
     var placeArray = [String]()
     var addressArray = [String]()
     var latArray = [String]()
@@ -35,16 +40,63 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         super.viewDidLoad()
         
         placeSearchBar.delegate = self
+        
+        self.searchedFavPlaceArray = favPlaces
+        self.searchedFavAddressArray = favAddresses
+        self.searchedFavLatArray = favLats
+        self.searchedFavLonArray = favLons
     }
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        
+        // ------------------------------ ↓ お気に入り ------------------------------
+        
+        // テキストが空のとき、すべてのお気に入りを表示
+        guard searchText.isEmpty == false else {
+            
+            self.searchedFavPlaceArray = favPlaces
+            self.searchedFavAddressArray = favAddresses
+            self.searchedFavLatArray = favLats
+            self.searchedFavLonArray = favLons
+            
+            if placeArray.count == addressArray.count
+                && searchedFavPlaceArray.count == searchedFavAddressArray.count {
+                resultsTableView.reloadData()
+            }
+            
+            return
+        }
+        
+        // 前回の検索結果の配列を空にする
+        searchedFavPlaceArray.removeAll()
+        searchedFavAddressArray.removeAll()
+        searchedFavLatArray.removeAll()
+        searchedFavLonArray.removeAll()
+        
+        // テキストを入力したとき、テキストを含むお気に入りの場所名を[searchedFavPlaceArray]に格納
+        searchedFavPlaceArray = favPlaces.filter({ item -> Bool in
+            item.contains(searchText)
+        })
+        
+        // 場所名をもとに住所・緯度・経度を格納
+        for result in self.searchedFavPlaceArray {
+            if let index = favPlaces.index(of: result) {
+                self.searchedFavAddressArray.append(favAddresses[index])
+                self.searchedFavLatArray.append(favLats[index])
+                self.searchedFavLonArray.append(favLons[index])
+            }
+        }
+        
+        // ------------------------------ ↓ その他 ------------------------------
+        
         // 前回の検索結果の配列を空にする
         placeArray.removeAll()
         addressArray.removeAll()
         latArray.removeAll()
         lonArray.removeAll()
         
-        if placeArray.count == addressArray.count {
+        if placeArray.count == addressArray.count
+            && searchedFavPlaceArray.count == searchedFavAddressArray.count {
             resultsTableView.reloadData()
         }
         
@@ -63,7 +115,8 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         // キーボードをとじる
         self.view.endEditing(true)
         
-        if placeArray.count == addressArray.count {
+        if self.placeArray.count == self.addressArray.count
+            && self.searchedFavPlaceArray.count == self.searchedFavAddressArray.count {
             resultsTableView.reloadData()
         }
     }
@@ -93,7 +146,8 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
                         // 配列に住所を追加
                         addressArray.append(administrativeArea + locality + throughfare + subThoroughfare)
                         // UI更新
-                        if self.placeArray.count == self.addressArray.count {
+                        if self.placeArray.count == self.addressArray.count
+                            && self.searchedFavPlaceArray.count == self.searchedFavAddressArray.count {
                             self.resultsTableView.reloadData()
                         }
                     }
@@ -119,7 +173,8 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
                             self.addressArray.append(administrativeArea + locality + throughfare + subThoroughfare)
                             // メインスレッドでUI更新
                             DispatchQueue.main.async {
-                                if self.placeArray.count == self.addressArray.count {
+                                if self.placeArray.count == self.addressArray.count
+                                    && self.searchedFavPlaceArray.count == self.searchedFavAddressArray.count {
                                     self.resultsTableView.reloadData()
                                 }
                             }
@@ -142,41 +197,95 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         print("検索キャンセル")
         
         // 前回の検索結果の配列を空にする
-        placeArray.removeAll()
-        addressArray.removeAll()
-        lonArray.removeAll()
-        latArray.removeAll()
+        self.searchedFavPlaceArray = favPlaces
+        self.searchedFavAddressArray = favAddresses
+        self.searchedFavLatArray = favLats
+        self.searchedFavLonArray = favLons
+        self.placeArray.removeAll()
+        self.addressArray.removeAll()
+        self.lonArray.removeAll()
+        self.latArray.removeAll()
         
-        resultsTableView.reloadData()
+        self.resultsTableView.reloadData()
         
         // テキストを空にする
-        placeSearchBar.text = ""
+        self.placeSearchBar.text = ""
         // キーボードをとじる
         self.view.endEditing(true)
     }
     
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return 2
+    }
+    
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        let sectionTitle = ["お気に入り", "その他"]
+        return sectionTitle[section]
+    }
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return placeArray.count
+        
+        // お気に入り
+        if section == 0 {
+            return self.searchedFavPlaceArray.count
+        }
+        
+        // その他
+        else {
+            return self.placeArray.count
+        }
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ResultCell", for:indexPath)
-        cell.textLabel?.text = placeArray[indexPath.row]
         
-        if #available(iOS 13.0, *) {
-            cell.detailTextLabel?.textColor = .secondaryLabel
-        } else {
-            cell.detailTextLabel?.textColor = .gray
+        let cell = tableView.dequeueReusableCell(withIdentifier: "ResultCell", for:indexPath)
+        
+        // お気に入り
+        if indexPath.section == 0 {
+            
+            cell.textLabel?.text = self.searchedFavPlaceArray[indexPath.row]
+            
+            if #available(iOS 13.0, *) {
+                cell.detailTextLabel?.textColor = .secondaryLabel
+            } else {
+                cell.detailTextLabel?.textColor = .gray
+            }
+            cell.detailTextLabel?.text = self.searchedFavAddressArray[indexPath.row]
         }
-        cell.detailTextLabel?.text = addressArray[indexPath.row]
+        
+        // その他
+        else {
+            
+            cell.textLabel?.text = self.placeArray[indexPath.row]
+            
+            if #available(iOS 13.0, *) {
+                cell.detailTextLabel?.textColor = .secondaryLabel
+            } else {
+                cell.detailTextLabel?.textColor = .gray
+            }
+            cell.detailTextLabel?.text = self.addressArray[indexPath.row]
+        }
         
         return cell
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        place = placeArray[(resultsTableView.indexPathForSelectedRow?.row)!]
-        lat = latArray[(resultsTableView.indexPathForSelectedRow?.row)!]
-        lon = lonArray[(resultsTableView.indexPathForSelectedRow?.row)!]
+        
+        // お気に入り
+        if resultsTableView.indexPathForSelectedRow?.section == 0 {
+            self.place = searchedFavPlaceArray[(resultsTableView.indexPathForSelectedRow?.row)!]
+            self.lat = searchedFavLatArray[(resultsTableView.indexPathForSelectedRow?.row)!].description
+            self.lon = searchedFavLonArray[(resultsTableView.indexPathForSelectedRow?.row)!].description
+        }
+        
+        // その他
+        else {
+            place = placeArray[(resultsTableView.indexPathForSelectedRow?.row)!]
+            lat = latArray[(resultsTableView.indexPathForSelectedRow?.row)!]
+            lon = lonArray[(resultsTableView.indexPathForSelectedRow?.row)!]
+        }
     }
+    
+    
     
 }
