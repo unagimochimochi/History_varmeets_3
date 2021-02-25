@@ -144,7 +144,7 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             let cell = tableView.dequeueReusableCell(withIdentifier: "PlanDetailAuthorCell", for: indexPath)
             cell.textLabel?.text = planItem[indexPath.row]
             
-            let icon = cell.viewWithTag(1) as! UIButton
+            let icon = cell.viewWithTag(1) as! UIImageView
             icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
             icon.layer.borderWidth = 1 // 枠線の太さ
             icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
@@ -545,13 +545,6 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             placeVC.place = self.place
             placeVC.lonStr = self.lonStr
             placeVC.latStr = self.latStr
-        }
-        
-        else if identifier == "PlanDetailsVCtoParticipantProfileVC" {
-            let participantProfileVC = segue.destination as! ParticipantProfileViewController
-            participantProfileVC.receiveName = self.authorName
-            participantProfileVC.receiveID = self.authorID
-            participantProfileVC.receiveBio = self.authorBio
         }
     }
     
