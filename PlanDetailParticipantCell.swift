@@ -23,9 +23,9 @@ class PlanDetailParticipantCell: UITableViewCell {
     var othersView: UIView!
     var othersViewWidth: NSLayoutConstraint!
     
-    var participant1Icon: UIButton!
-    var participant2Icon: UIButton!
-    var participant3Icon: UIButton!
+    var participant1Icon: UIImageView!
+    var participant2Icon: UIImageView!
+    var participant3Icon: UIImageView!
     
     var participant1Name: UILabel!
     var participant2Name: UILabel!
@@ -38,17 +38,17 @@ class PlanDetailParticipantCell: UITableViewCell {
         
         participant1View = self.viewWithTag(1)
         participant1View.translatesAutoresizingMaskIntoConstraints = false
-        participant1Icon = self.viewWithTag(2) as? UIButton
+        participant1Icon = self.viewWithTag(2) as? UIImageView
         participant1Name = self.viewWithTag(3) as? UILabel
         
         participant2View = self.viewWithTag(4)
         participant2View.translatesAutoresizingMaskIntoConstraints = false
-        participant2Icon = self.viewWithTag(5) as? UIButton
+        participant2Icon = self.viewWithTag(5) as? UIImageView
         participant2Name = self.viewWithTag(6) as? UILabel
         
         participant3View = self.viewWithTag(7)
         participant3View.translatesAutoresizingMaskIntoConstraints = false
-        participant3Icon = self.viewWithTag(8) as? UIButton
+        participant3Icon = self.viewWithTag(8) as? UIImageView
         participant3Name = self.viewWithTag(9) as? UILabel
         
         othersView = self.viewWithTag(10)
@@ -192,7 +192,7 @@ class PlanDetailParticipantCell: UITableViewCell {
     
     
     
-    func round(icon: UIButton) {
+    func round(icon: UIImageView) {
         
         icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
         icon.layer.borderWidth = 0.5 // 枠線の太さ
