@@ -9,7 +9,7 @@ import UIKit
 import MapKit
 import CloudKit
 
-class FavPlaceViewController: UIViewController, MKMapViewDelegate {
+class FavPlaceViewController: UIViewController, MKMapViewDelegate, UITextFieldDelegate {
     
     var place: String?
     var lat: Double?
@@ -23,6 +23,8 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
     var favLocations = [CLLocation]()    // データベース保存用
 
     @IBOutlet weak var mapView: MKMapView!
+    @IBOutlet weak var placeNameTextField: UITextField!
+    @IBOutlet weak var changePlaceNameButton: UIBarButtonItem!
     
     @IBOutlet weak var favButton: UIButton!
     @IBOutlet weak var addPlanButton: UIButton!
@@ -31,17 +33,24 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
         super.viewDidLoad()
         
         mapView.delegate = self
+        placeNameTextField.delegate = self
+        
+        changePlaceNameButton.image = UIImage(named: "EditButton")
+        
+        // 入力判定
+        placeNameTextField.addTarget(self, action: #selector(self.textEditingChanged(_:)), for: UIControl.Event.editingChanged)
 
         initMap()
         
         if let placeName = place {
             
-            self.navigationItem.title = placeName
+            placeNameTextField.text = placeName
+            print(placeName)
             
             if let lat = self.lat, let lon = self.lon {
                 
-                // ピンに緯度と経度をセット
                 let center = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                // ピンに緯度と経度をセット
                 annotation.coordinate = center
                 // ピンをMKMapViewの中心にする
                 mapView.centerCoordinate = center
@@ -92,6 +101,8 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
         addPlanButton.layer.cornerRadius = 8
     }
     
+    
+    
     func initMap() {
         // 縮尺
         var region = mapView.region
@@ -99,6 +110,8 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
         region.span.longitudeDelta = 0.02
         mapView.setRegion(region, animated: true)
     }
+    
+    
     
     // ピンの詳細設定
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -110,6 +123,85 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
         
         return annotationView
     }
+    
+    
+    
+    @IBAction func editPlaceName(_ sender: Any) {
+        
+        // 編集
+        if self.changePlaceNameButton.image == UIImage(named: "EditButton") {
+            // テキスト編集開始
+            self.placeNameTextField.isEnabled = true
+            self.placeNameTextField.becomeFirstResponder()
+            // ボタンを編集から保存にする
+            self.changePlaceNameButton.image = UIImage(named: "SaveButton")
+        }
+        
+        // 保存
+        else if self.changePlaceNameButton.image == UIImage(named: "SaveButton") {
+            
+            // キーボードをとじる
+            self.view.endEditing(true)
+            self.placeNameTextField.isEnabled = false
+            // ボタンを保存から編集にする
+            self.changePlaceNameButton.image = UIImage(named: "EditButton")
+            
+            if let index = favAddresses.index(of: annotation.subtitle!) {
+                
+                favPlaces[index] = self.placeNameTextField.text!
+                userDefaults.setValue(favPlaces, forKey: "favPlaces")
+                
+                self.favLocations.removeAll()
+                for i in 0...(favPlaces.count - 1) {
+                    self.favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+                }
+                
+                // データベースに保存
+                reloadFavorites(completion: {
+                    
+                    DispatchQueue.main.async {
+                        
+                        // ピンのタイトルを更新
+                        self.annotation.title = self.placeNameTextField.text
+                        
+                        let dialog = UIAlertController(title: "変更完了", message: "\(self.annotation.subtitle!)の名前を変更しました。", preferredStyle: .alert)
+                        // OKボタン
+                        dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                        // ダイアログを表示
+                        self.present(dialog, animated: true, completion: nil)
+                    }
+                })
+            }
+        }
+    }
+    
+    
+    
+    @objc func textEditingChanged(_ textField: UITextField) {
+        
+        if let text = textField.text {
+            
+            if text.count == 0 {
+                self.changePlaceNameButton.image = UIImage(named: "SaveButton_gray")
+                self.changePlaceNameButton.isEnabled = false
+            } else {
+                self.changePlaceNameButton.image = UIImage(named: "SaveButton")
+                self.changePlaceNameButton.isEnabled = true
+            }
+        }
+    }
+    
+    
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        
+        // キーボードをとじる
+        self.placeNameTextField.endEditing(true)
+        
+        return true
+    }
+    
+    
     
     @IBAction func tappedFavButton(_ sender: Any) {
         
@@ -130,27 +222,34 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
                 favLons.remove(at: index)
                 userDefaults.set(favLons, forKey: "favLons")
                 
-                let dialog = UIAlertController(title: "お気に入り解除", message: "\(annotation.title!)をお気に入りから削除しました。", preferredStyle: .alert)
-                // OKボタン
-                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-                // ダイアログを表示
-                self.present(dialog, animated: true, completion: nil)
-                
-                // ボタンの見た目をスイッチ
-                favButton.setTitle("お気に入り登録", for: .normal)
-                favButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-                favButton.backgroundColor = .clear
-                favButton.layer.borderColor = UIColor.orange.cgColor
-                favButton.layer.borderWidth = 1
-                
-                // データベースに保存
                 favLocations.removeAll()
                 if favPlaces.isEmpty == false {
                     for i in 0...(favPlaces.count - 1) {
                         favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
                     }
                 }
-                reloadFavorites()
+                
+                // データベースに保存
+                reloadFavorites(completion: {
+                    
+                    DispatchQueue.main.async {
+                        
+                        let dialog = UIAlertController(title: "お気に入り解除", message: "\(self.annotation.title!)をお気に入りから削除しました。", preferredStyle: .alert)
+                        // OKボタン
+                        dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                        // ダイアログを表示
+                        self.present(dialog, animated: true, completion: nil)
+                        
+                        // ボタンの見た目をスイッチ
+                        self.favButton.setTitle("お気に入り登録", for: .normal)
+                        self.favButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                        self.favButton.backgroundColor = .clear
+                        self.favButton.layer.borderColor = UIColor.orange.cgColor
+                        self.favButton.layer.borderWidth = 1
+                        self.changePlaceNameButton.image = UIImage(named: "EditButton_gray")
+                        self.changePlaceNameButton.isEnabled = false
+                    }
+                })
             }
         }
         
@@ -167,28 +266,35 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
                             
             favLons.append(annotation.coordinate.longitude)
             userDefaults.set(favLons, forKey: "favLons")
-                            
-            let dialog = UIAlertController(title: "お気に入り登録", message: "\(annotation.title!)をお気に入りに追加しました。", preferredStyle: .alert)
-            // OKボタン
-            dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-            // ダイアログを表示
-            self.present(dialog, animated: true, completion: nil)
             
-            // ボタンの見た目をスイッチ
-            favButton.setTitle("お気に入り解除", for: .normal)
-            favButton.setTitleColor(.white, for: .normal)
-            favButton.backgroundColor = .orange
-            
-            // データベースに保存
             favLocations.removeAll()
             for i in 0...(favPlaces.count - 1) {
                 favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
             }
-            reloadFavorites()
+            
+            // データベースに保存
+            reloadFavorites(completion: {
+                
+                DispatchQueue.main.async {
+                    
+                    let dialog = UIAlertController(title: "お気に入り登録", message: "\(self.annotation.title!)をお気に入りに追加しました。", preferredStyle: .alert)
+                    // OKボタン
+                    dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                    // ダイアログを表示
+                    self.present(dialog, animated: true, completion: nil)
+                    
+                    // ボタンの見た目をスイッチ
+                    self.favButton.setTitle("お気に入り解除", for: .normal)
+                    self.favButton.setTitleColor(.white, for: .normal)
+                    self.favButton.backgroundColor = .orange
+                    self.changePlaceNameButton.image = UIImage(named: "EditButton")
+                    self.changePlaceNameButton.isEnabled = true
+                }
+            })
         }
     }
     
-    func reloadFavorites() {
+    func reloadFavorites(completion: @escaping () -> ()) {
         
         let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
         let query = CKQuery(recordType: "Accounts", predicate: predicate)
@@ -212,6 +318,7 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
                         return
                     }
                     print("データベースのお気に入り更新成功")
+                    completion()
                 })
             }
         })
