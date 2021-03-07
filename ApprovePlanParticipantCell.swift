@@ -9,9 +9,9 @@ import UIKit
 
 class ApprovePlanParticipantCell: UITableViewCell {
 
-    var participant1Icon: UIButton!
-    var participant2Icon: UIButton!
-    var participant3Icon: UIButton!
+    var participant1Icon: UIImageView!
+    var participant2Icon: UIImageView!
+    var participant3Icon: UIImageView!
     
     var participant1Name: UILabel!
     var participant2Name: UILabel!
@@ -22,9 +22,9 @@ class ApprovePlanParticipantCell: UITableViewCell {
     override func awakeFromNib() {
         super.awakeFromNib()
         
-        participant1Icon = self.viewWithTag(3) as? UIButton
-        participant2Icon = self.viewWithTag(5) as? UIButton
-        participant3Icon = self.viewWithTag(7) as? UIButton
+        participant1Icon = self.viewWithTag(3) as? UIImageView
+        participant2Icon = self.viewWithTag(5) as? UIImageView
+        participant3Icon = self.viewWithTag(7) as? UIImageView
         
         round(icon: participant1Icon)
         round(icon: participant2Icon)
@@ -98,7 +98,7 @@ class ApprovePlanParticipantCell: UITableViewCell {
     
     
     
-    func round(icon: UIButton) {
+    func round(icon: UIImageView) {
         icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
         icon.layer.borderWidth = 0.5 // 枠線の太さ
         icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする

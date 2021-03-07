@@ -113,7 +113,7 @@ class ApprovePlanViewController: UIViewController, UITableViewDelegate, UITableV
             
             cell.textLabel?.text = planItem[indexPath.row]
             
-            let icon = cell.viewWithTag(1) as! UIButton
+            let icon = cell.viewWithTag(1) as! UIImageView
             icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
             icon.layer.borderWidth = 1 // 枠線の太さ
             icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
