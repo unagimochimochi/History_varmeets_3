@@ -44,6 +44,55 @@ class FavViewController: UIViewController, UITableViewDelegate, UITableViewDataS
     
     
     
+    // お気に入り追加画面からの巻き戻し
+    @IBAction func addedFavPlace(sender: UIStoryboardSegue) {
+        
+        if let addFavVC = sender.source as? AddFavViewController {
+            
+            if let newPlace = addFavVC.selectedPlace,
+               let newAddress = addFavVC.selectedAddress,
+               let newLat = addFavVC.selectedLat,
+               let newLon = addFavVC.selectedLon {
+                
+                favPlaces.append(newPlace)
+                favAddresses.append(newAddress)
+                favLats.append(newLat)
+                favLons.append(newLon)
+                favLocations.append(CLLocation(latitude: newLat, longitude: newLon))
+                
+                self.favTableView.reloadData()
+                
+                let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+                let query = CKQuery(recordType: "Accounts", predicate: predicate)
+                
+                self.publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                    
+                    if let error = error {
+                        print("データベースのお気に入り更新エラー1: \(error)")
+                        return
+                    }
+                    
+                    for record in records! {
+                        
+                        record["favPlaceNames"] = favPlaces as [String]
+                        record["favPlaceLocations"] = self.favLocations as [CLLocation]
+                        
+                        self.publicDatabase.save(record, completionHandler: {(record,error) in
+                            
+                            if let error = error {
+                                print("データベースのお気に入り更新エラー2: \(error)")
+                                return
+                            }
+                            print("データベースのお気に入り更新成功")
+                        })
+                    }
+                })
+            }
+        }
+    }
+    
+    
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return favPlaces.count
     }
