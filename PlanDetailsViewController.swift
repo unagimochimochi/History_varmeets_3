@@ -523,17 +523,37 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             addPlanVC.everyoneNamesExceptAuthor = everyoneNamesExceptAuthor
         }
         
-        else if identifier == "PlanDetailsVCtoNC" {
+        else if identifier == "PlanDetailsVCtoNC_A" {
+            let nc = segue.destination as! UINavigationController
+            let userListVC = nc.viewControllers[0] as! UserListViewController
+            
+            if self.planDetailsTableView.indexPathForSelectedRow?.row == 0 {
+                userListVC.classified = "author"
+                
+                if let authorID = self.authorID, let authorName = self.authorName {
+                    userListVC.userIDs.append(authorID)
+                    userListVC.userNames.append(authorName)
+                }
+                
+                if let authorBio = self.authorBio {
+                    userListVC.userBios.append(authorBio)
+                }
+            }
+        }
+        
+        else if identifier == "PlanDetailsVCtoNC_B" {
             let nc = segue.destination as! UINavigationController
             let userListVC = nc.viewControllers[0] as! UserListViewController
             
             if self.planDetailsTableView.indexPathForSelectedRow?.row == 1 {
+                userListVC.classified = "participants"
                 userListVC.userIDs = self.participantIDs
                 userListVC.userNames = self.participantNames
                 userListVC.userBios = self.participantBios
             }
             
             else if self.planDetailsTableView.indexPathForSelectedRow?.row == 2 {
+                userListVC.classified = "preparedParticipants"
                 userListVC.userIDs = self.preparedParticipantIDs
                 userListVC.userNames = self.preparedParticipantNames
                 userListVC.userBios = self.preparedParticipantBios

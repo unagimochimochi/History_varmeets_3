@@ -124,7 +124,6 @@ class RequestFriendViewController: UIViewController {
                     self.requestButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
                     self.requestButton.backgroundColor = .white
                     self.requestButton.layer.borderColor = UIColor.orange.cgColor
-                    self.requestButton.layer.borderWidth = 1
                 }
                 
                 // 友だち申請ボタンクリック後
@@ -307,6 +306,8 @@ class RequestFriendViewController: UIViewController {
         requestButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
         requestButton.layer.cornerRadius = 8
         requestButton.layer.masksToBounds = true
+        requestButton.layer.borderColor = UIColor.orange.cgColor
+        requestButton.layer.borderWidth = 1
         
         // すでに申請済みのとき
         if requestedAccounts.contains(myID!) {
@@ -314,18 +315,27 @@ class RequestFriendViewController: UIViewController {
             requestButton.setTitleColor(.white, for: .normal)
             requestButton.backgroundColor = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
         } else {
+            
             // すでに友だちのとき
             if existingFriendIDs.contains(friendID!) {
                 requestButton.setTitle("すでに友だちです", for: .normal)
                 requestButton.setTitleColor(.systemGray, for: .normal)
                 requestButton.layer.borderColor = UIColor.gray.cgColor
-                requestButton.layer.borderWidth = 1
                 requestButton.isEnabled = false
-            } else {
+            }
+            
+            // 自分を表示しているとき
+            else if myID! == friendID! {
+                requestButton.setTitle("自分には申請できませんよ〜", for: .normal)
+                requestButton.setTitleColor(.systemGray, for: .normal)
+                requestButton.layer.borderColor = UIColor.gray.cgColor
+                requestButton.isEnabled = false
+            }
+            
+            else {
                 requestButton.setTitle("友だち申請", for: .normal)
                 requestButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
                 requestButton.layer.borderColor = UIColor.orange.cgColor
-                requestButton.layer.borderWidth = 1
             }
         }
     }

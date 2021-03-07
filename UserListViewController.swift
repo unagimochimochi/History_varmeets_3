@@ -10,6 +10,8 @@ import CloudKit
 
 class UserListViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
+    var classified: String?     // 作成者（author） or 参加者（participants） or 参加候補者（preparedParticipants）
+    
     var userIDs = [String]()
     var userNames = [String]()
     var userBios = [String]()
@@ -26,6 +28,14 @@ class UserListViewController: UIViewController, UITableViewDelegate, UITableView
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        if self.classified == "author" {
+            self.navigationItem.title = "予定作成者"
+        } else if self.classified == "participants" {
+            self.navigationItem.title = "参加者一覧"
+        } else if self.classified == "preparedParticipants" {
+            self.navigationItem.title = "承認待ち一覧"
+        }
 
         fetchMyFriends()
     }
