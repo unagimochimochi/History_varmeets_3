@@ -985,7 +985,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 
                 var favLocations = [CLLocation]()    // 逆ジオコーディング用
                 for favLocation in favPlaceLocations {
-                    favAddresses.append("住所が取得できません")
+                    favAddresses.append("住所を取得できません")
                     favLats.append(favLocation.coordinate.latitude)
                     favLons.append(favLocation.coordinate.longitude)
                     favLocations.append(favLocation)
@@ -1008,10 +1008,13 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                             if let placemark = placemarks?.first,
                                let administrativeArea = placemark.administrativeArea,    //県
                                let locality = placemark.locality,    // 市区町村
-                               let throughfare = placemark.thoroughfare,    // 丁目を含む地名
-                               let subThoroughfare = placemark.subThoroughfare {    // 番地
-                                
-                                favAddresses[i] = administrativeArea + locality + throughfare + subThoroughfare
+                               let throughfare = placemark.thoroughfare {    // 丁目を含む地名
+                                if let subThoroughfare = placemark.subThoroughfare {    // 番地
+                                    
+                                    favAddresses[i] = administrativeArea + locality + throughfare + subThoroughfare
+                                } else {
+                                    favAddresses[i] = administrativeArea + locality + throughfare
+                                }
                             }
                         })
                     }

@@ -72,13 +72,17 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate, UITextFieldDe
                     }
                     
                     if let placemark = placemarks?.first,
-                       let administrativeArea = placemark.administrativeArea, //県
-                       let locality = placemark.locality, // 市区町村
-                       let throughfare = placemark.thoroughfare, // 丁目を含む地名
-                       let subThoroughfare = placemark.subThoroughfare { // 番地
-                        
-                        // サブタイトルに住所を表示
-                        self.annotation.subtitle = administrativeArea + locality + throughfare + subThoroughfare
+                       let administrativeArea = placemark.administrativeArea,    // 県
+                       let locality = placemark.locality,    // 市区町村
+                       let throughfare = placemark.thoroughfare {    // 丁目を含む地名
+                        if let subThoroughfare = placemark.subThoroughfare {    // 番地
+                            
+                            self.annotation.subtitle = administrativeArea + locality + throughfare + subThoroughfare
+                        } else {
+                            self.annotation.subtitle = administrativeArea + locality + throughfare
+                        }
+                    } else {
+                        self.annotation.subtitle = "住所を取得できません"
                     }
                 })
             }
@@ -146,7 +150,7 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate, UITextFieldDe
             // ボタンを保存から編集にする
             self.changePlaceNameButton.image = UIImage(named: "EditButton")
             
-            if let index = favAddresses.index(of: annotation.subtitle!) {
+            if let index = favLats.index(of: self.lat!) {
                 
                 favPlaces[index] = self.placeNameTextField.text!
                 userDefaults.setValue(favPlaces, forKey: "favPlaces")
