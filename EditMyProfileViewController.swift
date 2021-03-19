@@ -45,6 +45,9 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
             nameTextField.text = name
         }
         
+        // 100 - あらかじめ入力されている文字数
+        countLabel.text = (100 - bioTextView.text.count).description
+        
         // bioTextViewのフォント設定（不具合でTimesNewRomanになるのを防ぐ）
         let stringAttributes: [NSAttributedString.Key : Any] = [.font : UIFont.systemFont(ofSize: 14.0)]
         
@@ -132,13 +135,20 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         
         // 100文字以下のとき
         if textView.text.count <= 100 {
-            check.remove(at: 1)
-            check.insert(true, at: 1)
+            check[1] = true
+            countLabel.text = (100 - textView.text.count).description
+            if #available(iOS 13.0, *) {
+                countLabel.textColor = .label
+            } else {
+                countLabel.textColor = .gray
+            }
         }
         
         // 101文字以上のとき
         else {
             noGood(num: 1)
+            countLabel.text = (textView.text.count - 100).description
+            countLabel.textColor = .red
         }
     }
     
