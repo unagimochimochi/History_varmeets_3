@@ -16,7 +16,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
     @IBOutlet weak var mapView: MKMapView!
     var locationManager: CLLocationManager!
-    var annotation: MKPointAnnotation = MKPointAnnotation()
+    var longPressAnnotation = MKPointAnnotation()
     let geocoder = CLGeocoder()
     
     var lat: String = ""
@@ -48,7 +48,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     var meetingAnnotation = ArrangeAnnotation()
     var participantIDs = [String]()
     var participantLocations = [CLLocation]()
-    var participantAnnotations = [MKPointAnnotation]()
+    var participantAnnotations = [ArrangeAnnotation]()
     
     @IBOutlet weak var countdownLabel: UILabel!
     
@@ -137,10 +137,11 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                                 let first = CLLocation(latitude: 35.6809591, longitude: 139.7673068)
                                 self.participantLocations.append(first)
                                 
-                                self.participantAnnotations.append(MKPointAnnotation())
+                                self.participantAnnotations.append(ArrangeAnnotation())
                                 let first2D = CLLocationCoordinate2D(latitude: 35.6809591, longitude: 139.7673068)
                                 self.participantAnnotations[i].coordinate = first2D
                                 self.participantAnnotations[i].title = self.participantIDs[i]
+                                self.participantAnnotations[i].pinColor = UIColor()
                                 self.mapView.addAnnotation(self.participantAnnotations[i])
                             }
                             
@@ -203,7 +204,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     @IBAction func mapViewDiDTap(_ sender: UITapGestureRecognizer) {
         if sender.state == .ended {
             print("タップ")
-            mapView.removeAnnotation(annotation)
+            mapView.removeAnnotation(longPressAnnotation)
             hiddenDetailsView()
         }
     }
@@ -217,7 +218,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             print("ロングタップ開始")
             
             // ロングタップ開始時に古いピンを削除する
-            mapView.removeAnnotation(annotation)
+            mapView.removeAnnotation(longPressAnnotation)
             mapView.removeAnnotations(searchAnnotationArray)
             
             hiddenDetailsView()
@@ -257,10 +258,10 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             print("distance: " + distance.description)
             
             // ロングタップを検出した位置にピンを立てる
-            annotation.coordinate = center
-            mapView.addAnnotation(annotation)
+            longPressAnnotation.coordinate = center
+            mapView.addAnnotation(longPressAnnotation)
             // ピンを最初から選択状態にする
-            mapView.selectAnnotation(annotation, animated: true)
+            mapView.selectAnnotation(longPressAnnotation, animated: true)
         }
     }
     
@@ -317,7 +318,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 return
         }
         
-        self.annotation.title = administrativeArea + locality + throughfare + subThoroughfare
+        self.longPressAnnotation.title = administrativeArea + locality + throughfare + subThoroughfare
         placeAddressLabel.text = administrativeArea + locality + throughfare + subThoroughfare
     }
     
@@ -335,21 +336,37 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         detailsButton.setTitleColor(.orange, for: .normal)
         detailsButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18.0)
         
-        // 待ち合わせ中の目的地
         if let arrangedAnnotation = annotation as? ArrangeAnnotation {
             
+            // 待ち合わせの目的地のピン（画像）
             if arrangedAnnotation.pinImage != nil {
-                let destinationAnnotationView = MKAnnotationView(annotation: annotation, reuseIdentifier: nil)
-                destinationAnnotationView.image = UIImage(named: arrangedAnnotation.pinImage)
                 
+                let destinationAnnotationView = MKAnnotationView(annotation: annotation, reuseIdentifier: nil)
+                
+                // 旗にする
+                destinationAnnotationView.image = UIImage(named: arrangedAnnotation.pinImage)
                 // 吹き出しを表示
                 destinationAnnotationView.canShowCallout = true
                 
                 return destinationAnnotationView
             }
+            
+            // 参加者のピン（色）
+            else {
+                
+                let participantAnnotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: nil)
+                
+                // 黄色にする
+                participantAnnotationView.pinTintColor = .purple
+                // 吹き出しを表示
+                participantAnnotationView.canShowCallout = true
+                
+                return participantAnnotationView
+            }
         }
-        // 配列が空のとき（ロングタップでピンを立てたとき）
-        if searchAnnotationArray.isEmpty == true && self.annotation.title != nil {
+        
+        // 検索・ロングタップのピン
+        else {
             
             let annotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: nil)
             
@@ -360,30 +377,6 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             
             return annotationView
         }
-        
-        // 配列が空ではないとき（検索でピンを立てたとき）
-        else if searchAnnotationArray.isEmpty == false {
-            
-            let searchAnnotationView = MKPinAnnotationView(annotation: searchAnnotationArray as? MKAnnotation, reuseIdentifier: nil)
-
-            // 吹き出しを表示
-            searchAnnotationView.canShowCallout = true
-            // 吹き出しの右側にボタンをセット
-            searchAnnotationView.rightCalloutAccessoryView = detailsButton
-            
-            return searchAnnotationView
-        }
-        
-        // その他（参加者のピン？）
-        else {
-            let participantAnnotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: nil)
-            // 吹き出しを表示
-            participantAnnotationView.canShowCallout = true
-            
-            return participantAnnotationView
-        }
-        
-        
     }
     
     // 吹き出しアクセサリー押下時
@@ -395,10 +388,11 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         // 配列が空のとき（ロングタップでピンを立てたとき）
         if searchAnnotationArray.isEmpty == true {
-            placeNameLabel.text = annotation.title
+            
+            placeNameLabel.text = longPressAnnotation.title
             
             // すでにお気に入りに登録されているとき
-            if favAddresses.contains(annotation.title!) {
+            if favLats.contains(longPressAnnotation.coordinate.latitude) {
                 addFavButton.setTitle("お気に入り解除", for: .normal)
                 addFavButton.setTitleColor(.white, for: .normal)
                 addFavButton.backgroundColor = .orange
@@ -431,29 +425,31 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             
             if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title! {
                 placeNameLabel.text = selectedSearchAnnotationTitle
-                
-                // すでにお気に入り登録されているとき
-                if favPlaces.contains(selectedSearchAnnotationTitle) {
-                    addFavButton.setTitle("お気に入り解除", for: .normal)
-                    addFavButton.setTitleColor(.white, for: .normal)
-                    addFavButton.backgroundColor = .orange
-                }
-                
-                // お気に入り登録
-                else {
-                    addFavButton.setTitle("お気に入り登録", for: .normal)
-                    addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-                    addFavButton.backgroundColor = .clear
-                    addFavButton.layer.borderColor = UIColor.orange.cgColor
-                    addFavButton.layer.borderWidth = 1
-                }
+            } else {
+                placeNameLabel.text = "場所の名前を取得できません"
+            }
+            
+            // すでにお気に入り登録されているとき
+            if favLats.contains(latNum) {
+                addFavButton.setTitle("お気に入り解除", for: .normal)
+                addFavButton.setTitleColor(.white, for: .normal)
+                addFavButton.backgroundColor = .orange
+            }
+            
+            // お気に入り登録
+            else {
+                addFavButton.setTitle("お気に入り登録", for: .normal)
+                addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                addFavButton.backgroundColor = .clear
+                addFavButton.layer.borderColor = UIColor.orange.cgColor
+                addFavButton.layer.borderWidth = 1
             }
         }
     }
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         print("検索")
-        mapView.removeAnnotation(annotation)
+        mapView.removeAnnotation(longPressAnnotation)
         mapView.removeAnnotations(searchAnnotationArray)
         hiddenDetailsView()
         
@@ -534,35 +530,72 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         // 配列が空のとき（ロングタップでピンを立てたとき）
         if searchAnnotationArray.isEmpty == true {
-            // すでにお気に入り登録されているとき
-            if favAddresses.contains(annotation.title ?? "") {
+            
+            if let address = longPressAnnotation.title {
                 
-                if let index = favAddresses.index(of: annotation.title ?? "") {
+                // すでにお気に入り登録されているとき
+                if favLats.contains(longPressAnnotation.coordinate.latitude) {
                     
-                    favPlaces.remove(at: index)
+                    if let index = favLats.index(of: longPressAnnotation.coordinate.latitude) {
+                        
+                        favPlaces.remove(at: index)
+                        userDefaults.set(favPlaces, forKey: "favPlaces")
+                        
+                        favAddresses.remove(at: index)
+                        userDefaults.set(favAddresses, forKey: "favAddresses")
+                        
+                        favLats.remove(at: index)
+                        userDefaults.set(favLats, forKey: "favLats")
+                        
+                        favLons.remove(at: index)
+                        userDefaults.set(favLons, forKey: "favLons")
+                        
+                        let dialog = UIAlertController(title: "お気に入り解除", message: "\(address)をお気に入りから削除しました。", preferredStyle: .alert)
+                        // OKボタン
+                        dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                        // ダイアログを表示
+                        self.present(dialog, animated: true, completion: nil)
+                        
+                        // ボタンの見た目をスイッチ
+                        addFavButton.setTitle("お気に入り登録", for: .normal)
+                        addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                        addFavButton.backgroundColor = .clear
+                        addFavButton.layer.borderColor = UIColor.orange.cgColor
+                        addFavButton.layer.borderWidth = 1
+                        
+                        // データベースに保存
+                        favLocations.removeAll()
+                        for i in 0...(favPlaces.count - 1) {
+                            favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+                        }
+                        reloadFavorites()
+                    }
+                }
+                
+                // お気に入り登録
+                else {
+                    favPlaces.append(address)
                     userDefaults.set(favPlaces, forKey: "favPlaces")
                     
-                    favAddresses.remove(at: index)
+                    favAddresses.append(address)
                     userDefaults.set(favAddresses, forKey: "favAddresses")
                     
-                    favLats.remove(at: index)
+                    favLats.append(longPressAnnotation.coordinate.latitude)
                     userDefaults.set(favLats, forKey: "favLats")
                     
-                    favLons.remove(at: index)
+                    favLons.append(longPressAnnotation.coordinate.longitude)
                     userDefaults.set(favLons, forKey: "favLons")
                     
-                    let dialog = UIAlertController(title: "お気に入り解除", message: "\(annotation.title ?? "")をお気に入りから削除しました。", preferredStyle: .alert)
+                    let dialog = UIAlertController(title: "お気に入り登録", message: "\(address)をお気に入りに追加しました。", preferredStyle: .alert)
                     // OKボタン
                     dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
                     // ダイアログを表示
                     self.present(dialog, animated: true, completion: nil)
                     
                     // ボタンの見た目をスイッチ
-                    addFavButton.setTitle("お気に入り登録", for: .normal)
-                    addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-                    addFavButton.backgroundColor = .clear
-                    addFavButton.layer.borderColor = UIColor.orange.cgColor
-                    addFavButton.layer.borderWidth = 1
+                    addFavButton.setTitle("お気に入り解除", for: .normal)
+                    addFavButton.setTitleColor(.white, for: .normal)
+                    addFavButton.backgroundColor = .orange
                     
                     // データベースに保存
                     favLocations.removeAll()
@@ -573,37 +606,13 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 }
             }
             
-            // お気に入り登録
+            // 住所が取得できないとき
             else {
-                favPlaces.append(annotation.title ?? "")
-                userDefaults.set(favPlaces, forKey: "favPlaces")
-                
-                favAddresses.append(placeAddressLabel.text ?? "")
-                userDefaults.set(favAddresses, forKey: "favAddresses")
-                
-                favLats.append(annotation.coordinate.latitude)
-                userDefaults.set(favLats, forKey: "favLats")
-                
-                favLons.append(annotation.coordinate.longitude)
-                userDefaults.set(favLons, forKey: "favLons")
-                
-                let dialog = UIAlertController(title: "お気に入り登録", message: "\(annotation.title ?? "")をお気に入りに追加しました。", preferredStyle: .alert)
+                let dialog = UIAlertController(title: "登録失敗", message: "お気に入り登録に失敗しました😭\n少しずらしてピンを立ててみてください。", preferredStyle: .alert)
                 // OKボタン
                 dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
                 // ダイアログを表示
                 self.present(dialog, animated: true, completion: nil)
-                
-                // ボタンの見た目をスイッチ
-                addFavButton.setTitle("お気に入り解除", for: .normal)
-                addFavButton.setTitleColor(.white, for: .normal)
-                addFavButton.backgroundColor = .orange
-                
-                // データベースに保存
-                favLocations.removeAll()
-                for i in 0...(favPlaces.count - 1) {
-                    favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
-                }
-                reloadFavorites()
             }
         }
             
@@ -615,11 +624,11 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             // 選択されているピンは1つのため、0番目を取り出す
             let selectedSearchAnnotation = selectedSearchAnnotationArray[0]
             
-            if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title ?? "" {
+            if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title! {
                 // すでにお気に入りに登録されているとき
-                if favPlaces.contains(selectedSearchAnnotationTitle) {
+                if favLats.contains(selectedSearchAnnotation.coordinate.latitude) {
                     
-                    if let index = favPlaces.index(of: selectedSearchAnnotationTitle) {
+                    if let index = favLats.index(of: selectedSearchAnnotation.coordinate.latitude) {
                         
                         favPlaces.remove(at: index)
                         userDefaults.set(favPlaces, forKey: "favPlaces")
@@ -669,7 +678,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                     favLons.append(selectedSearchAnnotation.coordinate.longitude)
                     userDefaults.set(favLons, forKey: "favLons")
                     
-                    let dialog = UIAlertController(title: "お気に入り登録", message: "\(annotation.title ?? "")をお気に入りに追加しました。", preferredStyle: .alert)
+                    let dialog = UIAlertController(title: "お気に入り登録", message: "\(selectedSearchAnnotationTitle)をお気に入りに追加しました。", preferredStyle: .alert)
                     // OKボタン
                     dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
                     // ダイアログを表示
@@ -856,6 +865,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     
     // 遷移時に住所と緯度と経度を渡す
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
         guard let identifier = segue.identifier else {
             return
         }
@@ -865,9 +875,11 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             
             // 配列が空のとき（ロングタップでピンを立てたとき）
             if searchAnnotationArray.isEmpty == true {
-                addPlanVC.place = self.annotation.title ?? ""
-                addPlanVC.lat = self.lat
-                addPlanVC.lon = self.lon
+                if let address = self.longPressAnnotation.title {
+                    addPlanVC.place = address
+                    addPlanVC.lat = self.lat
+                    addPlanVC.lon = self.lon
+                }
             }
             
             // 配列が空ではないとき（検索でピンを立てたとき）

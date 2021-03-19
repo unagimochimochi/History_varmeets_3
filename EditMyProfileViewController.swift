@@ -20,10 +20,13 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
     @IBOutlet weak var icon: UIButton!
     @IBOutlet weak var header: UIButton!
     @IBOutlet weak var nameTextField: UITextField!
+    @IBOutlet weak var countLabel: UILabel!
     @IBOutlet weak var bioTextView: UITextView!
     
     var check = [true, true]
     @IBOutlet weak var saveButton: UIBarButtonItem!
+    
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -84,6 +87,7 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         viewInScrollView.addSubview(header)
         viewInScrollView.addSubview(icon)
         viewInScrollView.addSubview(nameTextField)
+        viewInScrollView.addSubview(countLabel)
         viewInScrollView.addSubview(bioTextView)
         
         scrollView.addSubview(viewInScrollView)
@@ -91,12 +95,17 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         self.view.addSubview(scrollView)
     }
     
+    
+    
     @IBAction func cancelButton(_ sender: Any) {
         self.dismiss(animated: true, completion: nil)
     }
     
+    
+    
     // 名前入力時の判定
     @objc func nameTextEditingChanged(textField: UITextField) {
+        
         if let text = textField.text {
             // 入力されていないとき
             if text.count == 0 {
@@ -116,8 +125,11 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         }
     }
     
+    
+    
     // 自己紹介入力時の判定
     func textViewDidChange(_ textView: UITextView) {
+        
         // 100文字以下のとき
         if textView.text.count <= 100 {
             check.remove(at: 1)
@@ -130,12 +142,15 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         }
     }
     
+    
+    
     func noGood(num: Int) {
-        check.remove(at: num)
-        check.insert(false, at: num)
+        check[num] = false
         saveButton.isEnabled = false
         saveButton.image = UIImage(named: "SaveButton_gray")
     }
+    
+    
     
     func textFieldDidEndEditing(_ textField: UITextField) {
         textField.endEditing(true)
@@ -154,6 +169,8 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
             }
         }
     }
+    
+    
     
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.endEditing(true)
@@ -175,6 +192,8 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         return true
     }
     
+    
+    
     func textViewDidBeginEditing(_ textView: UITextView) {
         // 初期テキストが入っていたらタップで空にする
         if textView.text == "自己紹介（100文字以内）" {
@@ -192,6 +211,8 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         saveButton.image = UIImage(named: "SaveButton_gray")
     }
 
+    
+    
     func textViewDidEndEditing(_ textView: UITextView) {
         textView.endEditing(true)
         
@@ -205,9 +226,13 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         }
     }
     
+    
+    
     @objc func done() {
         bioTextView.endEditing(true)
     }
+    
+    
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -216,6 +241,8 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(notification:)), name: UIResponder.keyboardDidHideNotification, object: nil)
     }
     
+    
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         
@@ -223,14 +250,19 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardDidHideNotification, object: self.view.window)
     }
     
+    
+    
     @objc func keyboardWillShow(notification: Notification) {
+        
         let info = notification.userInfo!
         let keyboardFrame = (info[UIResponder.keyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
         
+        // bioTextViewの座標基準をscrollViewからViewにする
+        let convertRect = scrollView.convert(bioTextView.frame, to: self.view)
         // bioTextViewの下
-        let bottomBioTextView = bioTextView.frame.origin.y + bioTextView.frame.height
+        let bottomBioTextView = convertRect.maxY
         // キーボードの上
-        let topKeyboard = UIScreen.main.bounds.height - keyboardFrame.size.height
+        let topKeyboard = UIScreen.main.bounds.height - keyboardFrame.size.height - 40 // 40はツールバー
         // 重なり
         let distance = bottomBioTextView - topKeyboard
         
@@ -239,11 +271,16 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         }
     }
     
+    
+    
     @objc func keyboardWillHide(notification: Notification) {
         scrollView.contentOffset.y = 0
     }
     
+    
+    
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
         guard let button = sender as? UIBarButtonItem, button === saveButton else {
             return
         }
@@ -256,5 +293,7 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         }
     }
 
+    
+    
 }
 
